@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: sdg_user
+      POSTGRES_PASSWORD: sdg_password
+      POSTGRES_DB: sdg_bot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  
+  bot:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql+asyncpg://sdg_user:sdg_password@postgres:5432/sdg_bot
+      BOT_TOKEN: ${BOT_TOKEN}
+    volumes:
+      - .:/app
+volumes:
+  postgres_data:
