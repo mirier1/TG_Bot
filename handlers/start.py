@@ -48,6 +48,6 @@ async def set_age_group(callback: CallbackQuery):
     await callback.message.answer(
         "✅ Возрастная группа сохранена!\n\n"
         "Теперь выберите раздел:",
-        reply_markup=get_main_inline_kb()
+        reply_markup=get_main_kb()
     )
     await callback.answer()
