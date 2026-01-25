@@ -9,6 +9,7 @@ from database import AsyncSessionLocal
 from models import User
 from sqlalchemy import select
 from utils.constants import SDG_TITLES
+from keyboards.main_menu import get_main_kb
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -16,18 +17,7 @@ dp = Dispatcher()
 
 #КЛАВИАТУРА -----------------
 #Создаем клавиатуру для главного меню
-def get_main_kb():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📚 Цели устойчивого развития")],
-            [KeyboardButton(text="🎮 Мини-игры")],
-            [KeyboardButton(text="❓ Вопрос эксперту")],
-            [KeyboardButton(text="🎓 Стать посланником ЦУР")],
-            [KeyboardButton(text="🎥 Конкурс «Я есть ЦУР»")],
-            [KeyboardButton(text="📊 Обратная связь")]
-        ],
-        resize_keyboard=True
-    )
+
 
 def get_age_kb():
     return ReplyKeyboardMarkup (
