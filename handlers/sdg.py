@@ -13,6 +13,7 @@ async def show_sdg_list(update: Message | CallbackQuery): #Показывает 
     if isinstance(update, CallbackQuery):
         message = update.message
         await update.answer()
+        await message.delete()
     else:
         message = update
     
@@ -65,7 +66,11 @@ async def back_to_sdg_list_handler(callback: CallbackQuery):
 # Назад в главное меню
 @router.callback_query(F.data == "back_to_main_menu")
 async def back_to_main_menu_handler(callback: CallbackQuery):
-    await callback.message.delete()
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
     await callback.message.answer(
         "Главное меню:",
         reply_markup=get_main_kb()

@@ -7,6 +7,11 @@ router = Router()
 
 @router.callback_query(F.data.startswith("menu_"))
 async def handle_main_menu(callback: CallbackQuery):
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
     menu_action = callback.data.replace("menu_", "")
     
     if menu_action == "sdg":
