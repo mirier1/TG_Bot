@@ -1,14 +1,8 @@
 import asyncio
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from aiogram.filters import Command
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram import Bot, Dispatcher
 from config import BOT_TOKEN
-from database import create_table, AsyncSessionLocal
-from models import User
-from sqlalchemy import select
+from database import create_table
 
-from utils.constants import SDG_TITLES
 from handlers.main_menu import router as main_menu_router
 from handlers.sdg import router as sdg_router
 from handlers.start import router as start_router
