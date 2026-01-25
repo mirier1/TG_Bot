@@ -2,7 +2,6 @@ from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def get_main_kb():
-    """Главное меню в виде inline-клавиатуры"""
     builder = InlineKeyboardBuilder()
     
     builder.row(
