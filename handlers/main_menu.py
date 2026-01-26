@@ -1,13 +1,17 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
 from handlers.sdg import show_sdg_list
 from keyboards.main_menu_kb import get_main_kb
 from keyboards.settings_kb import get_settings_kb
+from handlers.questions import ask_question_start
 
 router = Router()
 
 @router.callback_query(F.data.startswith("menu_"))
-async def handle_main_menu(callback: CallbackQuery):
+async def handle_main_menu(callback: CallbackQuery, state: FSMContext):
+    menu_action = callback.data.replace("menu_", "")
+
     try:
         await callback.message.delete()
     except:
@@ -20,7 +24,8 @@ async def handle_main_menu(callback: CallbackQuery):
     elif menu_action == "games":
         await callback.message.answer("🎮 Раздел мини-игр в разработке")
     elif menu_action == "question":
-        await callback.message.answer("❓ Раздел вопросов эксперту в разработке")
+        await ask_question_start(callback, state)
+        return
     elif menu_action == "ambassador":
         await callback.message.answer("🎓 Форма 'Стать посланником' в разработке")
     elif menu_action == "contest":
