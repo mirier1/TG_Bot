@@ -16,3 +16,8 @@ async def get_db():
 async def create_table():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+async def create_table():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("✅ Все таблицы вопросов созданы/проверены")
