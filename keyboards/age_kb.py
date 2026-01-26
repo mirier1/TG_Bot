@@ -2,7 +2,6 @@ from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def get_age_kb():
-    """Inline-клавиатура для выбора возрастной группы"""
     builder = InlineKeyboardBuilder()
     
     builder.row(

@@ -2,6 +2,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from handlers.sdg import show_sdg_list
 from keyboards.main_menu_kb import get_main_kb
+from keyboards.settings_kb import get_settings_kb
 
 router = Router()
 
@@ -27,6 +28,11 @@ async def handle_main_menu(callback: CallbackQuery):
     elif menu_action == "feedback":
         await callback.message.answer("📊 Обратная связь в разработке")
     elif menu_action == "settings":
-        await callback.message.answer("⚙️ Настройки профиля в разработке")
+        await callback.message.answer(
+            "⚙️ **Настройки профиля**\n\n"
+            "Выберите действие:",
+            reply_markup=get_settings_kb(),  # ← Клавиатура настроек
+            parse_mode="Markdown"
+        )
     
     await callback.answer()
