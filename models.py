@@ -25,3 +25,13 @@ class Question(Base):
     answer = Column(Text, nullable=True)  # Ответ админа
     created_at = Column(DateTime, default=datetime.utcnow)
     answered_at = Column(DateTime, nullable=True)
+
+class QuizResult(Base):
+    __tablename__ = "quiz_results"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    sdg_id = Column(Integer)
+    score = Column(Integer)  # сколько правильных
+    total = Column(Integer)  # сколько всего вопросов
+    created_at = Column(DateTime, default=datetime.utcnow)
