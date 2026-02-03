@@ -28,16 +28,18 @@ class Question(Base):
 
 class QuizResult(Base):
     __tablename__ = "quiz_results"
-    
     id = Column(Integer, primary_key=True)
     user_id = Column(BigInteger)
     sdg_id = Column(Integer)
+    difficulty = Column(String)
+    age_group = Column(String)  # ← ДОБАВЛЯЕМ
     score = Column(Integer)
     total = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)  # ← Добавляем
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
     
-    # Добавляем составной уникальный индекс
+    # Обновляем уникальный индекс
     __table_args__ = (
-        UniqueConstraint('user_id', 'sdg_id', name='uq_user_sdg'),
+        UniqueConstraint('user_id', 'sdg_id', 'difficulty', 'age_group', 
+                       name='uq_user_sdg_diff_age'),
     )
