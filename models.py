@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -32,6 +32,12 @@ class QuizResult(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(BigInteger)
     sdg_id = Column(Integer)
-    score = Column(Integer)  # сколько правильных
-    total = Column(Integer)  # сколько всего вопросов
+    score = Column(Integer)
+    total = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)  # ← Добавляем
+    
+    # Добавляем составной уникальный индекс
+    __table_args__ = (
+        UniqueConstraint('user_id', 'sdg_id', name='uq_user_sdg'),
+    )
