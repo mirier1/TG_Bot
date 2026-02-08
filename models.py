@@ -43,3 +43,21 @@ class QuizResult(Base):
         UniqueConstraint('user_id', 'sdg_id', 'difficulty', 'age_group', 
                        name='uq_user_sdg_diff_age'),
     )
+
+class GameResult(Base):
+    __tablename__ = "game_results"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    game_type = Column(String)  # 'waste', 'habits', 'rightwrong', 'story'
+    age_group = Column(String)  # 'young', 'teen', 'student'
+    difficulty = Column(String, nullable=True)  # Если в играх будет сложность
+    score = Column(Integer)  # Общий счет
+    max_score = Column(Integer)  # Максимально возможный
+    steps_completed = Column(Integer)  # Сколько шагов пройдено
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        UniqueConstraint('user_id', 'game_type', 'age_group', name='uq_user_game_age'),
+    )

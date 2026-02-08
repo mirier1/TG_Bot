@@ -22,7 +22,21 @@ async def handle_main_menu(callback: CallbackQuery, state: FSMContext):
     if menu_action == "sdg":
         await show_sdg_list(callback.message)
     elif menu_action == "games":
-        await callback.message.answer("🎮 Раздел мини-игр в разработке")
+        from handlers.games.menu import get_games_menu_kb
+        
+        # УДАЛЯЕМ старое сообщение и отправляем НОВОЕ
+        try:
+            await callback.message.delete()
+        except:
+            pass
+        
+        # Отправляем новое сообщение с играми
+        await callback.message.answer(
+            "🎮 **Мини-игры**\n\nВыберите возрастную группу:",
+            reply_markup=get_games_menu_kb(),
+            parse_mode="Markdown"
+        )
+        return
     elif menu_action == "question":
         await ask_question_start(callback, state)
         return
