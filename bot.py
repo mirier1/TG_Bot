@@ -13,7 +13,7 @@ from handlers.quizzes import router as quiz_router
 from handlers.games import games_router
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-
+#Коментарий для теста
 dp.include_router(sdg_router)
 dp.include_router(main_menu_router)
 dp.include_router(start_router)
