@@ -1,0 +1,140 @@
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from data.games_data import RIGHT_WRONG_SCENARIOS
+from .utils import save_game_result, create_game_keyboard, get_performance_text
+import random
+import asyncio
+
+router = Router()
+
+class RightWrongGameStates(StatesGroup):
+    playing = State()
+
+@router.callback_query(F.data.startswith("game_rightwrong_"))
+async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
+    """Запуск игры 'Что правильно?'"""
+    age_group = callback.data.split("_")[2]
+    
+    await state.update_data(
+        game_type="rightwrong",
+        age_group=age_group,
+        score=0,
+        step=0,
+        total_steps=3,  # 3 сценария
+        used_scenarios=[]  # Чтобы не повторялись
+    )
+    
+    await ask_rightwrong_question(callback, state)
+    await callback.answer()
+
+async def ask_rightwrong_question(callback: CallbackQuery, state: FSMContext):
+    """Задаёт вопрос сценария"""
+    data = await state.get_data()
+    
+    # Выбираем сценарий, который ещё не использовался
+    available_scenarios = [s for s in RIGHT_WRONG_SCENARIOS 
+                          if s not in data.get("used_scenarios", [])]
+    
+    if not available_scenarios:
+        # Если все сценарии использованы, перемешиваем заново
+        await state.update_data(used_scenarios=[])
+        available_scenarios = RIGHT_WRONG_SCENARIOS.copy()
+    
+    scenario, answers = random.choice(available_scenarios)
+    
+    # Обновляем состояние
+    data["used_scenarios"].append((scenario, answers))
+    await state.update_data(
+        current_scenario=scenario,
+        current_answers=answers,
+        step=data["step"] + 1,
+        used_scenarios=data["used_scenarios"]
+    )
+    
+    # Создаём клавиатуру с вариантами
+    builder = InlineKeyboardBuilder()
+    for answer_text in answers.keys():
+        builder.row(
+            InlineKeyboardButton(
+                text=answer_text,
+                callback_data=f"rightwrong_answer_{answer_text}"
+            )
+        )
+    
+    await callback.message.edit_text(
+        f"❓ **Что правильно?**\n\n"
+        f"Ситуация {data['step'] + 1}/{data['total_steps']}\n"
+        f"Счет: {data['score']}\n\n"
+        f"**{scenario}**",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    
+    await state.set_state(RightWrongGameStates.playing)
+
+@router.callback_query(RightWrongGameStates.playing, F.data.startswith("rightwrong_answer_"))
+async def handle_rightwrong_answer(callback: CallbackQuery, state: FSMContext):
+    """Обработка ответа в игре 'Что правильно?'"""
+    selected_answer = callback.data.replace("rightwrong_answer_", "")
+    data = await state.get_data()
+    
+    # Получаем очки за выбранный ответ
+    points = data["current_answers"].get(selected_answer, 0)
+    data["score"] += points
+    
+    # Формируем текст результата
+    if points > 0:
+        result_text = f"✅ **Отличный выбор!** +{points} очков!"
+    elif points == 0:
+        result_text = "😐 Можно было бы и лучше..."
+    else:
+        result_text = f"❌ **Не самый лучший вариант...** {points} очков"
+    
+    await state.update_data(score=data["score"])
+    
+    if data["step"] < data["total_steps"]:
+        # Следующий сценарий
+        await callback.message.edit_text(result_text)
+        await callback.answer()
+        await asyncio.sleep(1.5)
+        await ask_rightwrong_question(callback, state)
+    else:
+        # Конец игры
+        await finish_rightwrong_game(callback, state, result_text)
+
+async def finish_rightwrong_game(callback: CallbackQuery, state: FSMContext, result_text: str):
+    """Завершение игры 'Что правильно?'"""
+    data = await state.get_data()
+    
+    # Максимальный возможный счёт (все ответы по +10)
+    max_score = data["total_steps"] * 10
+    
+    # Сохраняем результат
+    await save_game_result(
+        user_id=callback.from_user.id,
+        game_type="rightwrong",
+        age_group=data["age_group"],
+        score=data["score"],
+        max_score=max_score,
+        steps=data["total_steps"]
+    )
+    
+    # Финальное сообщение
+    percentage = (data["score"] / max_score) * 100 if max_score > 0 else 0
+    performance = get_performance_text(data["score"], max_score)
+    
+    await callback.message.edit_text(
+        f"{result_text}\n\n"
+        f"🎮 **Игра завершена!**\n\n"
+        f"📊 Результат: {data['score']}/{max_score} очков\n"
+        f"📈 Процент: {percentage:.0f}%\n"
+        f"🏅 {performance}\n\n"
+        f"Что дальше?",
+        reply_markup=create_game_keyboard(data["age_group"], "rightwrong"),
+        parse_mode="Markdown"
+    )
+    
+    await state.clear()
