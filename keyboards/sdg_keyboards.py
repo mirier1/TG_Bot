@@ -22,7 +22,6 @@ def get_sdg_list_kb():
     return builder.as_markup()
 
 def get_sdg_detail_kb(sdg_num: int):
-    """Клавиатура для детальной страницы ЦУР"""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📝 Пройти квиз", callback_data=f"quiz_{sdg_num}")],
         [InlineKeyboardButton(text="🎥 Видео", callback_data=f"video_{sdg_num}")],
