@@ -30,7 +30,7 @@ def get_games_menu_kb():
     builder.row(
         InlineKeyboardButton(
             text="◀️ Назад в главное меню",
-            callback_data="menu_back"
+            callback_data="back_main_menu"
         )
     )
     

@@ -23,8 +23,8 @@ async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
         age_group=age_group,
         score=0,
         step=0,
-        total_steps=3,  # 3 сценария
-        used_scenarios=[]  # Чтобы не повторялись
+        total_steps=3,
+        used_scenarios=[]
     )
     
     await ask_rightwrong_question(callback, state)
@@ -54,17 +54,20 @@ async def ask_rightwrong_question(callback: CallbackQuery, state: FSMContext):
         used_scenarios=data["used_scenarios"]
     )
     
-    # Создаём клавиатуру с вариантами
+    # Создаём клавиатуру с вариантами (используем индексы для callback_data)
     builder = InlineKeyboardBuilder()
-    for answer_text in answers.keys():
+    for i, (answer_text, points) in enumerate(answers.items()):
+        # Используем индекс вместо текста для callback_data
+        callback_data = f"rightwrong_answer_{i}"
+        
         builder.row(
             InlineKeyboardButton(
                 text=answer_text,
-                callback_data=f"rightwrong_answer_{answer_text}"
+                callback_data=callback_data
             )
         )
     
-    await callback.message.edit_text(
+    await callback.message.answer(
         f"❓ **Что правильно?**\n\n"
         f"Ситуация {data['step'] + 1}/{data['total_steps']}\n"
         f"Счет: {data['score']}\n\n"
@@ -78,11 +81,15 @@ async def ask_rightwrong_question(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(RightWrongGameStates.playing, F.data.startswith("rightwrong_answer_"))
 async def handle_rightwrong_answer(callback: CallbackQuery, state: FSMContext):
     """Обработка ответа в игре 'Что правильно?'"""
-    selected_answer = callback.data.replace("rightwrong_answer_", "")
+    # Получаем индекс ответа
+    answer_index = int(callback.data.replace("rightwrong_answer_", ""))
     data = await state.get_data()
     
-    # Получаем очки за выбранный ответ
-    points = data["current_answers"].get(selected_answer, 0)
+    # Получаем ответ по индексу
+    answers = data["current_answers"]
+    answer_items = list(answers.items())
+    answer_text, points = answer_items[answer_index]
+    
     data["score"] += points
     
     # Формируем текст результата
@@ -97,7 +104,7 @@ async def handle_rightwrong_answer(callback: CallbackQuery, state: FSMContext):
     
     if data["step"] < data["total_steps"]:
         # Следующий сценарий
-        await callback.message.edit_text(result_text)
+        await callback.message.answer(result_text)
         await callback.answer()
         await asyncio.sleep(1.5)
         await ask_rightwrong_question(callback, state)
@@ -126,7 +133,7 @@ async def finish_rightwrong_game(callback: CallbackQuery, state: FSMContext, res
     percentage = (data["score"] / max_score) * 100 if max_score > 0 else 0
     performance = get_performance_text(data["score"], max_score)
     
-    await callback.message.edit_text(
+    await callback.message.answer(
         f"{result_text}\n\n"
         f"🎮 **Игра завершена!**\n\n"
         f"📊 Результат: {data['score']}/{max_score} очков\n"
