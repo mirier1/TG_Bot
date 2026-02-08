@@ -14,11 +14,11 @@ from .common import router as common_router
 games_router = Router()
 
 # Включаем все роутеры игр
+games_router.include_router(common_router)
 games_router.include_router(menu_router)
 games_router.include_router(waste_router)
 games_router.include_router(habits_router)
 games_router.include_router(right_wrong_router)
-games_router.include_router(common_router)
 
 # Экспортируем для основного бота
 __all__ = ['games_router']
