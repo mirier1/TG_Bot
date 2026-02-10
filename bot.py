@@ -11,6 +11,7 @@ from handlers.questions import router as questions_router
 from handlers.admin import router as admin_router
 from handlers.quizzes import router as quiz_router
 from handlers.games import games_router
+
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
