@@ -71,11 +71,9 @@ async def ask_habits_question(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(HabitsGameStates.playing, F.data.startswith("habits_answer_"))
 async def handle_habits_answer(callback: CallbackQuery, state: FSMContext):
-    """Обработка ответа в игре с привычками"""
-    user_choice = callback.data.replace("habits_answer_", "")  # "good" или "bad"
+    user_choice = callback.data.replace("habits_answer_", "")
     data = await state.get_data()
     
-    # Проверяем ответ
     user_is_good = (user_choice == "good")
     correct_is_good = data["correct_is_good"]
     
@@ -88,14 +86,27 @@ async def handle_habits_answer(callback: CallbackQuery, state: FSMContext):
     await state.update_data(score=data["score"])
     
     if data["step"] < data["total_steps"]:
-        # Следующий вопрос
-        await callback.message.edit_text(result_text)
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(
+                text="➡️ Далее",
+                callback_data="habits_next_question"
+            )
+        )
+        
+        await callback.message.edit_text(
+            result_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="Markdown"
+        )
         await callback.answer()
-        await asyncio.sleep(1.5)
-        await ask_habits_question(callback, state)
     else:
-        # Конец игры
         await finish_habits_game(callback, state, result_text)
+
+@router.callback_query(F.data == "habits_next_question")
+async def next_habits_question(callback: CallbackQuery, state: FSMContext):
+    await ask_habits_question(callback, state)
+    await callback.answer()
 
 async def finish_habits_game(callback: CallbackQuery, state: FSMContext, result_text: str):
     """Завершение игры 'Правильные привычки'"""

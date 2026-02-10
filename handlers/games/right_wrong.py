@@ -80,19 +80,15 @@ async def ask_rightwrong_question(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(RightWrongGameStates.playing, F.data.startswith("rightwrong_answer_"))
 async def handle_rightwrong_answer(callback: CallbackQuery, state: FSMContext):
-    """Обработка ответа в игре 'Что правильно?'"""
-    # Получаем индекс ответа
     answer_index = int(callback.data.replace("rightwrong_answer_", ""))
     data = await state.get_data()
     
-    # Получаем ответ по индексу
     answers = data["current_answers"]
     answer_items = list(answers.items())
     answer_text, points = answer_items[answer_index]
     
     data["score"] += points
     
-    # Формируем текст результата
     if points > 0:
         result_text = f"✅ **Отличный выбор!** +{points} очков!"
     elif points == 0:
@@ -103,14 +99,27 @@ async def handle_rightwrong_answer(callback: CallbackQuery, state: FSMContext):
     await state.update_data(score=data["score"])
     
     if data["step"] < data["total_steps"]:
-        # Следующий сценарий
-        await callback.message.answer(result_text)
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(
+                text="➡️ Далее",
+                callback_data="rightwrong_next_question"
+            )
+        )
+        
+        await callback.message.edit_text(
+            result_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="Markdown"
+        )
         await callback.answer()
-        await asyncio.sleep(1.5)
-        await ask_rightwrong_question(callback, state)
     else:
-        # Конец игры
         await finish_rightwrong_game(callback, state, result_text)
+
+@router.callback_query(F.data == "rightwrong_next_question")
+async def next_rightwrong_question(callback: CallbackQuery, state: FSMContext):
+    await ask_rightwrong_question(callback, state)
+    await callback.answer()
 
 async def finish_rightwrong_game(callback: CallbackQuery, state: FSMContext, result_text: str):
     """Завершение игры 'Что правильно?'"""
