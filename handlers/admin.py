@@ -5,6 +5,7 @@ from database import AsyncSessionLocal
 from models import Question
 from config import ADMIN_IDS
 from sqlalchemy import select
+from datetime import datetime
 
 router = Router()
 
@@ -59,6 +60,7 @@ async def reply_to_question(message: Message, command: CommandObject, bot):
             # Обновляем статус в БД
             question.status = 'answered'
             question.answer = answer_text
+            question.answered_at = datetime.utcnow()
             await session.commit()
             
             await message.reply(f"✅ Ответ отправлен пользователю {question.user_name}")
