@@ -14,15 +14,6 @@ from handlers.games import games_router
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-dp.include_router(sdg_router)
-dp.include_router(main_menu_router)
-dp.include_router(start_router)
-dp.include_router(settings_roiter)
-dp.include_router(qustions_router)
-dp.include_router(admin_router)
-dp.include_router(quiz_router)
-dp.include_router(games_router)
-
 async def main():
     # 1. Создаём таблицы в БД (ОДИН раз!)
     await create_table()
