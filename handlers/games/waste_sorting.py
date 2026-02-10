@@ -72,11 +72,9 @@ async def ask_waste_question(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(WasteGameStates.playing, F.data.startswith("waste_answer_"))
 async def handle_waste_answer(callback: CallbackQuery, state: FSMContext):
-    """Обработка ответа в игре с мусором"""
     selected_category = callback.data.replace("waste_answer_", "")
     data = await state.get_data()
     
-    # Проверяем ответ
     if selected_category == data["correct_category"]:
         data["score"] += 10
         result_text = f"✅ **Правильно!** {data['current_item']} — это {data['correct_category']}!"
@@ -86,14 +84,30 @@ async def handle_waste_answer(callback: CallbackQuery, state: FSMContext):
     await state.update_data(score=data["score"])
     
     if data["step"] < data["total_steps"]:
-        # Показываем результат и следующий вопрос
-        await callback.message.edit_text(result_text)
+        # ПОКАЗЫВАЕМ КНОПКУ "ДАЛЕЕ" вместо ожидания
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(
+                text="➡️ Далее",
+                callback_data="waste_next_question"
+            )
+        )
+        
+        await callback.message.edit_text(
+            result_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="Markdown"
+        )
         await callback.answer()
-        await asyncio.sleep(1.5)  # Пауза перед следующим вопросом
-        await ask_waste_question(callback, state)
     else:
-        # Конец игры
         await finish_waste_game(callback, state, result_text)
+
+# ДОБАВЬ НОВЫЙ ХЕНДЛЕР ДЛЯ КНОПКИ "ДАЛЕЕ"
+@router.callback_query(F.data == "waste_next_question")
+async def next_waste_question(callback: CallbackQuery, state: FSMContext):
+    """Переход к следующему вопросу по кнопке"""
+    await ask_waste_question(callback, state)
+    await callback.answer()
 
 async def finish_waste_game(callback: CallbackQuery, state: FSMContext, result_text: str):
     """Завершение игры 'Сортировка мусора'"""

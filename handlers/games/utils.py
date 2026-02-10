@@ -55,7 +55,7 @@ def create_game_keyboard(age_group: str, game_type: str):
     builder.row(
         InlineKeyboardButton(
             text="🏠 В главное меню",
-            callback_data="menu_back"
+            callback_data="back_main_menu"
         )
     )
     
