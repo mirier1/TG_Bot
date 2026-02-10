@@ -56,13 +56,12 @@ async def process_question(message: Message, state: FSMContext, bot):
         # Отправляем в админ-чат
         admin_msg = await bot.send_message(
             ADMIN_CHAT_ID,
-            f"❓ **Вопрос #{question.id}**\n"
+            f"❓ Вопрос #{question.id}\n"
             f"От: {question.user_name} (ID: {question.user_id})\n"
             f"Время: {question.created_at.strftime('%H:%M %d.%m.%Y')}\n"
             f"─────────────────\n"
             f"{question.text}\n\n"
-            f"Ответить: /reply {question.id} [текст ответа]",
-            parse_mode=ParseMode.MARKDOWN
+            f"Ответить: /reply {question.id} [текст ответа]"
         )
         
         # Сохраняем ID сообщения в админ-чате
