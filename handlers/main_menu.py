@@ -1,10 +1,13 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
-from handlers.sdg import show_sdg_list
+
 from keyboards.main_menu_kb import get_main_kb
 from keyboards.settings_kb import get_settings_kb
+
+from handlers.sdg import show_sdg_list
 from handlers.questions import ask_question_start
+from handlers.ambassador import start_ambassador_form
 
 router = Router()
 
@@ -41,7 +44,8 @@ async def handle_main_menu(callback: CallbackQuery, state: FSMContext):
         await ask_question_start(callback, state)
         return
     elif menu_action == "ambassador":
-        await callback.message.answer("🎓 Форма 'Стать посланником' в разработке")
+        await start_ambassador_form(callback, state)
+        return
     elif menu_action == "contest":
         await callback.message.answer("🎥 Конкурс 'Я есть ЦУР' в разработке")
     elif menu_action == "feedback":

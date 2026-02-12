@@ -11,6 +11,7 @@ from handlers.questions import router as questions_router
 from handlers.admin import router as admin_router
 from handlers.quizzes import router as quiz_router
 from handlers.games import games_router
+from handlers.ambassador import router as ambassador_router
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -33,6 +34,7 @@ async def main():
     dp.include_router(admin_router)
     dp.include_router(quiz_router)
     dp.include_router(games_router)
+    dp.include_router(ambassador_router)
     
     # 4. Запускаем бота
     print("🤖 Бот запущен!")

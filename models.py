@@ -61,3 +61,18 @@ class GameResult(Base):
     __table_args__ = (
         UniqueConstraint('user_id', 'game_type', 'age_group', name='uq_user_game_age'),
     )
+
+class AmbassadorApplication(Base):
+    __tablename__ = "ambassador_applications"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    full_name = Column(String)  # Имя
+    age = Column(Integer)       # Возраст
+    institution = Column(String) # Школа/вуз
+    city = Column(String)       # Город
+    contact = Column(String)    # Телефон/Telegram
+    role = Column(String)       # Роль: ambassador, lecturer, eco
+    status = Column(String, default='pending')  # pending/approved/rejected
+    created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
