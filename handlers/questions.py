@@ -38,6 +38,10 @@ async def cancel_question(message: Message, state: FSMContext):
 # Приём вопроса от пользователя
 @router.message(QuestionForm.text)
 async def process_question(message: Message, state: FSMContext, bot):
+    if not ADMIN_CHAT_ID:
+        await message.answer("❌ Системная ошибка: админ-чат не настроен")
+        return
+        
     if len(message.text) < 5:
         await message.answer("❌ Вопрос слишком короткий. Минимум 5 символов.\nПопробуйте еще раз.")
         return

@@ -32,7 +32,7 @@ class QuizResult(Base):
     user_id = Column(BigInteger)
     sdg_id = Column(Integer)
     difficulty = Column(String)
-    age_group = Column(String)  # ← ДОБАВЛЯЕМ
+    age_group = Column(String) 
     score = Column(Integer)
     total = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
