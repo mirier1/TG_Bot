@@ -1,7 +1,7 @@
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
-from aiohttp_socks import ProxyConnector
+import aiohttp
 from config import BOT_TOKEN
 from database import create_table
 
@@ -15,20 +15,21 @@ from handlers.quizzes import router as quiz_router
 from handlers.games import games_router
 from handlers.ambassador import router as ambassador_router
 
-# Настройка прокси
-PROXY_URL = "socks5://127.0.0.1:1080"  # Для Tor: socks5://127.0.0.1:9050
+# Настройка прокси для Tor
+PROXY_URL = "socks5://127.0.0.1:9050"
 
 async def main():
     # 1. Создаём таблицы в БД
     await create_table()
     print("✅ Таблицы созданы/проверены")
     
-    # 2. Создаём прокси-коннектор (теперь event loop запущен)
-    proxy_connector = ProxyConnector.from_url(PROXY_URL)
-    session = AiohttpSession(connector=proxy_connector)
+    # 2. Создаём сессию с прокси (правильный способ)
+    connector = aiohttp.SocksConnector.from_url(PROXY_URL)
+    session = aiohttp.ClientSession(connector=connector)
     
     # 3. Создаём бота с прокси
-    bot = Bot(token=BOT_TOKEN, session=session)
+    aiogram_session = AiohttpSession(session=session)
+    bot = Bot(token=BOT_TOKEN, session=aiogram_session)
     dp = Dispatcher()
     
     # 4. Подключаем все обработчики
