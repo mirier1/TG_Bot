@@ -2,6 +2,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
 import aiohttp
+from aiohttp_socks import SocksConnector 
 from config import BOT_TOKEN
 from database import create_table
 
