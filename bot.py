@@ -1,5 +1,7 @@
 import asyncio
 from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiohttp_socks import ProxyConnector
 from config import BOT_TOKEN
 from database import create_table
 
@@ -13,7 +15,17 @@ from handlers.quizzes import router as quiz_router
 from handlers.games import games_router
 from handlers.ambassador import router as ambassador_router
 
-bot = Bot(token=BOT_TOKEN)
+# ===== НАСТРОЙКА ПРОКСИ =====
+# Замени на свои параметры прокси
+PROXY_URL = "socks5://127.0.0.1:1080"  # Для Tor: socks5://127.0.0.1:9050
+# ============================
+
+# Создаём сессию с прокси
+proxy_connector = ProxyConnector.from_url(PROXY_URL)
+session = AiohttpSession(connector=proxy_connector)
+
+# Создаём бота с прокси
+bot = Bot(token=BOT_TOKEN, session=session)
 dp = Dispatcher()
 
 async def main():
@@ -33,7 +45,7 @@ async def main():
     dp.include_router(ambassador_router)
     
     # 3. Запускаем бота
-    print("🤖 Бот запущен!")
+    print(f"🤖 Бот запущен через прокси: {PROXY_URL}")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
