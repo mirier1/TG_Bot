@@ -15,25 +15,23 @@ from handlers.quizzes import router as quiz_router
 from handlers.games import games_router
 from handlers.ambassador import router as ambassador_router
 
-# ===== НАСТРОЙКА ПРОКСИ =====
-# Замени на свои параметры прокси
+# Настройка прокси
 PROXY_URL = "socks5://127.0.0.1:1080"  # Для Tor: socks5://127.0.0.1:9050
-# ============================
-
-# Создаём сессию с прокси
-proxy_connector = ProxyConnector.from_url(PROXY_URL)
-session = AiohttpSession(connector=proxy_connector)
-
-# Создаём бота с прокси
-bot = Bot(token=BOT_TOKEN, session=session)
-dp = Dispatcher()
 
 async def main():
-    # 1. Создаём таблицы в БД (ОДИН раз!)
+    # 1. Создаём таблицы в БД
     await create_table()
     print("✅ Таблицы созданы/проверены")
     
-    # 2. Подключаем все обработчики
+    # 2. Создаём прокси-коннектор (теперь event loop запущен)
+    proxy_connector = ProxyConnector.from_url(PROXY_URL)
+    session = AiohttpSession(connector=proxy_connector)
+    
+    # 3. Создаём бота с прокси
+    bot = Bot(token=BOT_TOKEN, session=session)
+    dp = Dispatcher()
+    
+    # 4. Подключаем все обработчики
     dp.include_router(sdg_router)
     dp.include_router(main_menu_router)
     dp.include_router(start_router)
@@ -44,7 +42,7 @@ async def main():
     dp.include_router(games_router)
     dp.include_router(ambassador_router)
     
-    # 3. Запускаем бота
+    # 5. Запускаем бота
     print(f"🤖 Бот запущен через прокси: {PROXY_URL}")
     await dp.start_polling(bot)
 
