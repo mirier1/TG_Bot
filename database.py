@@ -6,6 +6,11 @@ from models import Base
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+print(f"🔍 DATABASE_URL = {DATABASE_URL}")  # ВРЕМЕННО! Удали после отладки
+
+if not DATABASE_URL:
+    raise ValueError("❌ DATABASE_URL не задан!")
+
 engine = create_async_engine(DATABASE_URL)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
