@@ -76,3 +76,15 @@ class AmbassadorApplication(Base):
     status = Column(String, default='pending')  # pending/approved/rejected
     created_at = Column(DateTime, default=datetime.utcnow)
     reviewed_at = Column(DateTime, nullable=True)
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    sdg_id = Column(Integer, nullable=True)  # Для какой ЦУР
+    usefulness = Column(Integer)  # 1-5
+    interest = Column(Integer)    # 1-5
+    clarity = Column(Integer)     # 1-5
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

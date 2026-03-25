@@ -67,3 +67,31 @@ async def reply_to_question(message: Message, command: CommandObject, bot):
             
         except Exception as e:
             await message.reply(f"❌ Ошибка отправки: {str(e)}")
+
+@router.message(Command("export_feedback"))
+async def export_feedback(message: Message):
+    if not is_admin(message):
+        return
+    
+    async with AsyncSessionLocal() as session:
+        stmt = select(Feedback).order_by(Feedback.created_at.desc())
+        result = await session.execute(stmt)
+        feedbacks = result.scalars().all()
+    
+    # Генерация CSV
+    import csv
+    import io
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "user_id", "usefulness", "interest", "clarity", "comment", "created_at"])
+    
+    for f in feedbacks:
+        writer.writerow([f.id, f.user_id, f.usefulness, f.interest, f.clarity, f.comment, f.created_at])
+    
+    # Отправка файла
+    from aiogram.types import BufferedInputFile
+    await message.answer_document(
+        BufferedInputFile(output.getvalue().encode(), filename="feedback.csv"),
+        caption="📊 Выгрузка обратной связи"
+    )
