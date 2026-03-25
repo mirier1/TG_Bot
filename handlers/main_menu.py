@@ -48,8 +48,6 @@ async def handle_main_menu(callback: CallbackQuery, state: FSMContext):
         return
     elif menu_action == "contest":
         await callback.message.answer("🎥 Конкурс 'Я есть ЦУР' в разработке")
-    elif menu_action == "feedback":
-        await callback.message.answer("📊 Обратная связь в разработке")
     elif menu_action == "settings":
         await callback.message.answer(
             "⚙️ **Настройки профиля**\n\n"
