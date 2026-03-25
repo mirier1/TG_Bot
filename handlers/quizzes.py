@@ -83,7 +83,8 @@ async def start_new_quiz(callback: CallbackQuery, state: FSMContext, sdg_id: int
         await callback.answer("❌ Вопросы отсутствуют")
         return
     
-    selected_questions = random.sample(questions, min(10, len(questions)))
+    MAX_QUSTIONS = 10
+    selected_questions = random.sample(questions, min(MAX_QUSTIONS, len(questions)))
     
     await state.update_data(
         sdg_id=sdg_id,

@@ -17,15 +17,11 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 async def main():
-    # 1. Создаём таблицы в БД (ОДИН раз!)
+    # 1. Создаём таблицы в БД
     await create_table()
     print("✅ Таблицы созданы/проверены")
     
-    # 2. Создаём бота и диспетчер
-    bot = Bot(token=BOT_TOKEN)
-    dp = Dispatcher()
-    
-    # 3. Подключаем все обработчики
+    # 2. Подключаем все обработчики
     dp.include_router(sdg_router)
     dp.include_router(main_menu_router)
     dp.include_router(start_router)
@@ -36,7 +32,7 @@ async def main():
     dp.include_router(games_router)
     dp.include_router(ambassador_router)
     
-    # 4. Запускаем бота
+    # 3. Запускаем бота
     print("🤖 Бот запущен!")
     await dp.start_polling(bot)
 

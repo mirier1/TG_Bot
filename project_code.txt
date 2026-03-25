@@ -1,0 +1,2276 @@
+=== ПРОЕКТ TG БОТА ===
+Дата: Вс 08 мар 2026 11:29:32 +04
+
+=== Файл: ./bot.py ===
+
+import asyncio
+from aiogram import Bot, Dispatcher
+from config import BOT_TOKEN
+from database import create_table
+
+from handlers.main_menu import router as main_menu_router
+from handlers.sdg import router as sdg_router
+from handlers.start import router as start_router
+from handlers.settings import router as settings_router
+from handlers.questions import router as questions_router
+from handlers.admin import router as admin_router
+from handlers.quizzes import router as quiz_router
+from handlers.games import games_router
+from handlers.ambassador import router as ambassador_router
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
+
+async def main():
+    # 1. Создаём таблицы в БД (ОДИН раз!)
+    await create_table()
+    print("✅ Таблицы созданы/проверены")
+    
+    # 2. Подключаем все обработчики
+    dp.include_router(sdg_router)
+    dp.include_router(main_menu_router)
+    dp.include_router(start_router)
+    dp.include_router(settings_router)
+    dp.include_router(questions_router)
+    dp.include_router(admin_router)
+    dp.include_router(quiz_router)
+    dp.include_router(games_router)
+    dp.include_router(ambassador_router)
+    
+    # 3. Запускаем бота
+    print("🤖 Бот запущен!")
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+=== Файл: ./config.py ===
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
+ADMIN_IDS = [int(id.strip()) for id in os.getenv("ADMIN_IDS", "").split(",") if id.strip()]
+
+=== Файл: ./database.py ===
+
+import os
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from dotenv import load_dotenv
+from models import Base
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_async_engine(DATABASE_URL)
+AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session
+
+async def create_table():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+=== Файл: ./data/games_data.py ===
+
+"""
+Данные для мини-игр Telegram-бота "Посланники ЦУР"
+Все игры адаптированы под возрастные группы.
+"""
+
+# Константы для проверки возраста
+AGE_GROUPS = {
+    "young": "5-7 классы",
+    "teen": "9-11 классы", 
+    "student": "Студенты"
+}
+
+WASTE_ITEMS = {
+    "Пластиковая бутылка": "Пластик",
+    "Газета": "Бумага",
+    "Стеклянная банка": "Стекло",
+    "Алюминиевая банка": "Металл",
+    "Яблочный огрызок": "Органика",
+    "Консервная банка": "Металл",
+    "Журнал": "Бумага",
+    "Пластиковый пакет": "Пластик",
+    "Бутылка от вина": "Стекло",
+    "Кожура от банана": "Органика"
+}
+
+WASTE_CATEGORIES = ["Пластик", "Бумага", "Стекло", "Металл", "Органика"]
+
+GOOD_HABITS = [
+    ("Выключать свет, выходя из комнаты", True),
+    ("Бросать мусор на улице", False),
+    ("Сортировать отходы", True),
+    ("Оставлять воду включенной", False),
+    ("Использовать многоразовые сумки", True),
+    ("Много смотреть телевизор", False),
+    ("Делать зарядку по утрам", True),
+    ("Поздно ложиться спать", False),
+    ("Читать книги", True),
+    ("Пропускать завтрак", False)
+]
+
+RIGHT_WRONG_SCENARIOS = [
+    ("Ты увидел, что кто-то бросил фантик на землю. Твои действия?", {
+        "Поднять и выбросить в урну": 10,
+        "Пройти мимо": 0,
+        "Тоже бросить мусор": -5
+    }),
+    ("Ты закончил пить воду из пластиковой бутылки. Что сделаешь?", {
+        "Выброшу в общий мусор": 0,
+        "Выброшу в контейнер для пластика": 10,
+        "Оставлю на лавочке": -5
+    }),
+    ("Ты идешь в магазин за продуктами. Что возьмешь с собой?", {
+        "Пластиковые пакеты из магазина": 0,
+        "Многоразовую сумку": 10,
+        "Ничего, понесу в руках": 5
+    })
+]
+
+# Для сюжетной игры (9-11 классы и студенты) - ПОЛНЫЕ СЦЕНАРИИ
+STORY_SCENARIOS = {
+    "teen": [  # 9-11 классы
+        {
+            "title": "Экологический проект в школе",
+            "description": "Ты решил организовать экологический проект в своей школе.",
+            "steps": [
+                {
+                    "situation": "В школе объявили сбор макулатуры. Твои одноклассники не хотят учащаться.",
+                    "choices": [
+                        {"text": "Убедить их, объяснить важность переработки", "points": 10, "next": 1},
+                        {"text": "Собрать макулатуру самому", "points": 7, "next": 1},
+                        {"text": "Не участвовать, раз другие не хотят", "points": 0, "next": 2}
+                    ]
+                },
+                {
+                    "situation": "Ты решил организовать экоклуб. Директор просит план действий.",
+                    "choices": [
+                        {"text": "Разработать детальный план с мероприятиями", "points": 10, "next": 2},
+                        {"text": "Попросить помощи у учителя биологии", "points": 8, "next": 2},
+                        {"text": "Отказаться от идеи, слишком сложно", "points": 0, "next": 3}
+                    ]
+                },
+                {
+                    "situation": "Экоклуб создан! Нужно провести первое мероприятие.",
+                    "choices": [
+                        {"text": "Организовать лекцию про ЦУР", "points": 10, "next": 3},
+                        {"text": "Сделать выставку плакатов", "points": 8, "next": 3},
+                        {"text": "Просто посадить дерево", "points": 5, "next": 3}
+                    ]
+                },
+                {
+                    "situation": "Твой проект заметили! Что дальше?",
+                    "choices": [
+                        {"text": "Расширить проект на всю школу", "points": 10},
+                        {"text": "Участвовать в городском конкурсе", "points": 8},
+                        {"text": "Закончить на этом", "points": 3}
+                    ]
+                }
+            ]
+        }
+    ],
+    "student": [  # Студенты
+        {
+            "title": "Устойчивый кампус",
+            "description": "Ты студент и хочешь сделать кампус более экологичным.",
+            "steps": [
+                {
+                    "situation": "В общежитии никто не сортирует мусор. Ты хочешь это изменить.",
+                    "choices": [
+                        {"text": "Организовать встречу и рассказать о сортировке", "points": 10, "next": 1},
+                        {"text": "Поставить контейнеры и начать самому", "points": 8, "next": 1},
+                        {"text": "Пожаловаться администрации", "points": 3, "next": 2}
+                    ]
+                },
+                {
+                    "situation": "Ты предлагаешь установить велопарковки в кампусе.",
+                    "choices": [
+                        {"text": "Собрать подписи студентов", "points": 10, "next": 2},
+                        {"text": "Написать предложение в студсовет", "points": 8, "next": 2},
+                        {"text": "Купить велопарковку самому", "points": 5, "next": 3}
+                    ]
+                },
+                {
+                    "situation": "Администрация согласна, но нужен источник финансирования.",
+                    "choices": [
+                        {"text": "Найти спонсора среди выпускников", "points": 10, "next": 3},
+                        {"text": "Организовать сбор средств", "points": 8, "next": 3},
+                        {"text": "Просить деньги у университета", "points": 5, "next": 3}
+                    ]
+                },
+                {
+                    "situation": "Проект реализован! Что дальше?",
+                    "choices": [
+                        {"text": "Создать студенческую экологическую организацию", "points": 10},
+                        {"text": "Поделиться опытом с другими вузами", "points": 8},
+                        {"text": "Закончить проект и заняться учебой", "points": 3}
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+# Явный экспорт для удобства импорта
+__all__ = [
+    'AGE_GROUPS',
+    'WASTE_ITEMS',
+    'WASTE_CATEGORIES', 
+    'GOOD_HABITS',
+    'RIGHT_WRONG_SCENARIOS',
+    'STORY_SCENARIOS'
+]
+
+=== Файл: ./data/quiz_questions.py ===
+
+# Уровни сложности: 'easy', 'medium', 'hard'
+# Возрастные группы: 'young', 'teen', 'student' (как в User.age_group)
+
+QUIZ_QUESTIONS = {
+    1: {  # ЦУР 1
+        'young': {
+            'easy': [
+                {
+                    "question": "Вопрос для young, сложность easy (1)",
+                    "options": ["1", "2", "3"],
+                    "correct": 0,
+                    "explanation": "Ответ 1"
+                },
+                # другие вопросы
+            ],
+            'medium': [
+                {
+                    "question": "Вопрос для young, сложность medium(2)",
+                    "options": ["1", "2", "3"],
+                    "correct": 1,
+                    "explanation": "Ответ 2"
+                },
+                # другие вопросы
+            ],
+            'hard': [
+                {
+                    "question": "Вопрос для young, сложность hard (3)",
+                    "options": ["1", "2", "3"],
+                    "correct": 2,
+                    "explanation": "Ответ 3"
+                },
+                # другие вопросы
+            ]
+        },
+        'teen': {
+            'easy': [
+                {
+                    "question": "Вопрос для teen, сложность easy (1)",
+                    "options": ["1", "2", "3"],
+                    "correct": 0,
+                    "explanation": "Ответ 1"
+                },
+                # другие вопросы
+            ],
+            'medium': [
+                {
+                    "question": "Вопрос для teen, сложность medium(2)",
+                    "options": ["1", "2", "3"],
+                    "correct": 1,
+                    "explanation": "Ответ 2"
+                },
+                # другие вопросы
+            ],
+            'hard': [
+                {
+                    "question": "Вопрос для teen, сложность hard (3)",
+                    "options": ["1", "2", "3"],
+                    "correct": 2,
+                    "explanation": "Ответ 3"
+                },
+                # другие вопросы
+            ]
+        },
+        'student': {
+            'easy': [
+                {
+                    "question": "Вопрос для student, сложность easy (1)",
+                    "options": ["1", "2", "3"],
+                    "correct": 0,
+                    "explanation": "Ответ 1"
+                },
+                # другие вопросы
+            ],
+            'medium': [
+                {
+                    "question": "Вопрос для student, сложность medium(2)",
+                    "options": ["1", "2", "3"],
+                    "correct": 1,
+                    "explanation": "Ответ 2"
+                },
+                # другие вопросы
+            ],
+            'hard': [
+                {
+                    "question": "Вопрос для student, сложность hard (3)",
+                    "options": ["1", "2", "3"],
+                    "correct": 2,
+                    "explanation": "Ответ 3"
+                },
+                # другие вопросы
+            ]
+        }
+    },
+    # другие ЦУР...
+}
+
+=== Файл: ./handlers/admin.py ===
+
+from aiogram import Router, F
+from aiogram.types import Message
+from aiogram.filters import Command, CommandObject
+from database import AsyncSessionLocal
+from models import Question
+from config import ADMIN_IDS
+from sqlalchemy import select
+from datetime import datetime
+
+router = Router()
+
+# Фильтр для проверки админа
+def is_admin(message: Message) -> bool:
+    return message.from_user.id in ADMIN_IDS
+
+@router.message(Command("reply"), F.func(is_admin))
+async def reply_to_question(message: Message, command: CommandObject, bot):
+    if not command.args:
+        await message.reply("❌ Формат: /reply <ID_вопроса> <текст ответа>")
+        return
+    
+    try:
+        # Парсим аргументы: /reply 15 текст ответа
+        parts = command.args.split(' ', 1)
+        question_id = int(parts[0])
+        answer_text = parts[1] if len(parts) > 1 else ""
+        
+        if not answer_text:
+            await message.reply("❌ Текст ответа не может быть пустым")
+            return
+        
+    except ValueError:
+        await message.reply("❌ Неверный формат ID вопроса")
+        return
+    
+    # Находим вопрос в БД
+    async with AsyncSessionLocal() as session:
+        stmt = select(Question).where(Question.id == question_id)
+        result = await session.execute(stmt)
+        question = result.scalar_one_or_none()
+        
+        if not question:
+            await message.reply(f"❌ Вопрос #{question_id} не найден")
+            return
+        
+        if question.status == 'answered':
+            await message.reply(f"⚠️ На вопрос #{question_id} уже дан ответ")
+            return
+        
+        # Отправляем ответ пользователю
+        try:
+            await bot.send_message(
+                question.user_id,
+                f"📩 **На вопрос {question.text} Эксперт (Имя эксперта) ответил: **\n\n"
+                f"{answer_text}\n\n"
+                f"Если остались вопросы, задайте новый.",
+                parse_mode="Markdown"
+            )
+            
+            # Обновляем статус в БД
+            question.status = 'answered'
+            question.answer = answer_text
+            question.answered_at = datetime.utcnow()
+            await session.commit()
+            
+            await message.reply(f"✅ Ответ отправлен пользователю {question.user_name}")
+            
+        except Exception as e:
+            await message.reply(f"❌ Ошибка отправки: {str(e)}")
+
+=== Файл: ./handlers/ambassador.py ===
+
+from aiogram import Router, F, html
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+from aiogram.filters import Command, StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from database import AsyncSessionLocal
+from models import AmbassadorApplication
+from datetime import datetime
+from config import ADMIN_CHAT_ID
+from aiogram.enums import ParseMode
+
+router = Router()
+
+# Состояния формы
+class AmbassadorForm(StatesGroup):
+    name = State()
+    age = State()
+    institution = State()
+    city = State()
+    contact = State()
+    role = State()
+    confirm = State()
+
+# Кнопки для выбора роли
+ROLES = {
+    "ambassador": "🏫 Амбассадор в школе",
+    "lecturer": "📚 Волонтёр-лектор",
+    "eco": "🌿 Эко-волонтёр"
+}
+
+# Старт формы - ЭТОТ ХЕНДЛЕР ВЫЗЫВАЕТСЯ ИЗ ГЛАВНОГО МЕНЮ
+@router.callback_query(F.data == "menu_ambassador")
+async def start_ambassador_form(callback: CallbackQuery, state: FSMContext):
+    """Начало формы 'Стать посланником'"""
+    await callback.message.answer(
+        "🎓 <b>Стать посланником ЦУР</b>\n\n"
+        "Заполните анкету. Это займёт 2 минуты.\n\n"
+        "<b>Шаг 1/6:</b> Введите ваше имя и фамилию:",
+        parse_mode=ParseMode.HTML
+    )
+    await state.set_state(AmbassadorForm.name)
+    await callback.answer()
+
+@router.message(AmbassadorForm.name)
+async def process_name(message: Message, state: FSMContext):
+    """Обработка имени"""
+    if len(message.text) < 2:
+        await message.answer("❌ Слишком короткое имя. Введите имя и фамилию:")
+        return
+    
+    await state.update_data(name=message.text)
+    await message.answer(
+        "<b>Шаг 2/6:</b> Введите ваш возраст:",
+        parse_mode=ParseMode.HTML
+    )
+    await state.set_state(AmbassadorForm.age)
+
+@router.message(AmbassadorForm.age)
+async def process_age(message: Message, state: FSMContext):
+    """Обработка возраста"""
+    try:
+        age = int(message.text)
+        if age < 7 or age > 100:
+            await message.answer("❌ Возраст должен быть от 7 до 100 лет. Введите корректный возраст:")
+            return
+    except ValueError:
+        await message.answer("❌ Введите число (ваш возраст):")
+        return
+    
+    await state.update_data(age=age)
+    await message.answer(
+        "<b>Шаг 3/6:</b> Введите название вашей школы/вуза:",
+        parse_mode=ParseMode.HTML
+    )
+    await state.set_state(AmbassadorForm.institution)
+
+@router.message(AmbassadorForm.institution)
+async def process_institution(message: Message, state: FSMContext):
+    """Обработка учебного заведения"""
+    if len(message.text) < 2:
+        await message.answer("❌ Введите корректное название:")
+        return
+    
+    await state.update_data(institution=message.text)
+    await message.answer(
+        "<b>Шаг 4/6:</b> Введите ваш город:",
+        parse_mode=ParseMode.HTML
+    )
+    await state.set_state(AmbassadorForm.city)
+
+@router.message(AmbassadorForm.city)
+async def process_city(message: Message, state: FSMContext):
+    """Обработка города"""
+    if len(message.text) < 2:
+        await message.answer("❌ Введите корректное название города:")
+        return
+    
+    await state.update_data(city=message.text)
+    
+    # Клавиатура для выбора роли
+    builder = InlineKeyboardBuilder()
+    for role_id, role_text in ROLES.items():
+        builder.row(InlineKeyboardButton(
+            text=role_text,
+            callback_data=f"amb_role_{role_id}"
+        ))
+    
+    await message.answer(
+        "<b>Шаг 5/6:</b> Выберите вашу роль:",
+        reply_markup=builder.as_markup(),
+        parse_mode=ParseMode.HTML
+    )
+    await state.set_state(AmbassadorForm.role)
+
+@router.callback_query(F.data.startswith("amb_role_"))
+async def process_role(callback: CallbackQuery, state: FSMContext):
+    """Обработка выбора роли"""
+    role = callback.data.replace("amb_role_", "")
+    role_text = ROLES.get(role, role)
+    
+    await state.update_data(role=role, role_text=role_text)
+    
+    await callback.message.delete()
+    await callback.message.answer(
+        "<b>Шаг 6/6:</b> Введите ваш контакт (телефон или Telegram):",
+        parse_mode=ParseMode.HTML
+    )
+    await state.set_state(AmbassadorForm.contact)
+    await callback.answer()
+
+@router.message(AmbassadorForm.contact)
+async def process_contact(message: Message, state: FSMContext):
+    """Обработка контакта и показ подтверждения"""
+    if len(message.text) < 5:
+        await message.answer("❌ Введите корректный контакт:")
+        return
+    
+    await state.update_data(contact=message.text)
+    data = await state.get_data()
+    
+    # Показываем сводку с экранированием HTML
+    text = (
+        f"📋 <b>Проверьте данные:</b>\n\n"
+        f"<b>Имя:</b> {html.quote(data['name'])}\n"
+        f"<b>Возраст:</b> {data['age']}\n"
+        f"<b>Уч. заведение:</b> {html.quote(data['institution'])}\n"
+        f"<b>Город:</b> {html.quote(data['city'])}\n"
+        f"<b>Роль:</b> {html.quote(data['role_text'])}\n"
+        f"<b>Контакт:</b> {html.quote(data['contact'])}\n\n"
+        f"Всё верно?"
+    )
+    
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="✅ Да, отправить", callback_data="amb_confirm"),
+        InlineKeyboardButton(text="✏️ Заполнить заново", callback_data="amb_restart")
+    )
+    
+    await message.answer(
+        text,
+        reply_markup=builder.as_markup(),
+        parse_mode=ParseMode.HTML
+    )
+    await state.set_state(AmbassadorForm.confirm)
+
+@router.callback_query(F.data == "amb_confirm")
+async def confirm_application(callback: CallbackQuery, state: FSMContext, bot):
+    """Подтверждение и сохранение заявки"""
+    data = await state.get_data()
+    
+    # Сохраняем в БД
+    async with AsyncSessionLocal() as session:
+        application = AmbassadorApplication(
+            user_id=callback.from_user.id,
+            full_name=data['name'],
+            age=data['age'],
+            institution=data['institution'],
+            city=data['city'],
+            contact=data['contact'],
+            role=data['role'],
+            status='pending'
+        )
+        session.add(application)
+        await session.flush()
+        
+        # Отправляем в админ-чат с экранированием
+        admin_text = (
+            f"🆕 <b>Новая заявка посланника!</b>\n\n"
+            f"<b>ID:</b> {application.id}\n"
+            f"<b>От:</b> @{html.quote(callback.from_user.username or 'нет')}\n"
+            f"<b>Имя:</b> {html.quote(data['name'])}\n"
+            f"<b>Возраст:</b> {data['age']}\n"
+            f"<b>Уч. заведение:</b> {html.quote(data['institution'])}\n"
+            f"<b>Город:</b> {html.quote(data['city'])}\n"
+            f"<b>Роль:</b> {html.quote(data['role_text'])}\n"
+            f"<b>Контакт:</b> {html.quote(data['contact'])}\n\n"
+            f"Статус: ⏳ Ожидает рассмотрения"
+        )
+        
+        await bot.send_message(
+            ADMIN_CHAT_ID,
+            admin_text,
+            parse_mode=ParseMode.HTML
+        )
+        
+        await session.commit()
+    
+    # Отвечаем пользователю
+    await callback.message.edit_text(
+        "✅ <b>Заявка отправлена!</b>\n\n"
+        "Мы рассмотрим её в ближайшее время и свяжемся с вами.\n"
+        "Спасибо за ваше желание изменить мир к лучшему! 🌍",
+        parse_mode=ParseMode.HTML
+    )
+    await state.clear()
+    await callback.answer()
+
+@router.callback_query(F.data == "amb_restart")
+async def restart_application(callback: CallbackQuery, state: FSMContext):
+    """Перезапуск формы"""
+    await state.clear()
+    await callback.message.delete()
+    await callback.message.answer(
+        "🔄 <b>Заполните анкету заново</b>\n\n"
+        "Шаг 1/6: Введите ваше имя и фамилию:",
+        parse_mode=ParseMode.HTML
+    )
+    await state.set_state(AmbassadorForm.name)
+    await callback.answer()
+
+@router.callback_query(F.data == "amb_cancel")
+async def cancel_application(callback: CallbackQuery, state: FSMContext):
+    """Отмена заполнения"""
+    await state.clear()
+    await callback.message.edit_text(
+        "❌ Заполнение анкеты отменено.\n"
+        "Если передумаете - нажмите кнопку в меню.",
+        parse_mode=ParseMode.HTML
+    )
+    await callback.answer()
+
+=== Файл: ./handlers/games/common.py ===
+
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+
+from keyboards.main_menu_kb import get_main_kb
+
+router = Router()
+
+@router.callback_query(F.data == "back_main_menu")
+async def back_to_main_menu(callback: CallbackQuery):
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
+    await callback.message.answer(
+        "Главное меню:",
+        reply_markup=get_main_kb()
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "help_games")
+async def show_games_help(callback: CallbackQuery):
+    """Показывает справку по играм"""
+    help_text = (
+        "🎮 Помощь по мини-играм\n\n"
+        "Игры для 5-7 классов:\n"
+        "• ♻️ Сортировка мусора — учимся правильно сортировать отходы\n"
+        "• 👍 Правильные привычки — определяем хорошие и плохие привычки\n"
+        "• ❓ Что правильно? — выбираем правильное поведение в ситуациях\n\n"
+        "Игры для 9-11 классов и студентов:\n"
+        "• 📖 Сюжетная игра — принимаем решения в сложных ситуациях\n\n"
+        "Как играть:\n"
+        "1. Выберите возрастную группу\n"
+        "2. Выберите игру\n"
+        "3. Отвечайте на вопросы\n"
+        "4. Набирайте очки за правильные ответы\n\n"
+        "Результаты сохраняются в вашем профиле!"
+    )
+    
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="◀️ Назад", callback_data="menu_games")
+    )
+    
+    await callback.message.answer(
+        help_text,
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+=== Файл: ./handlers/games/good_habits.py ===
+
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from data.games_data import GOOD_HABITS
+from .utils import save_game_result, create_game_keyboard, get_performance_text
+import random
+import asyncio
+
+router = Router()
+
+class HabitsGameStates(StatesGroup):
+    playing = State()
+
+@router.callback_query(F.data.startswith("game_habits_"))
+async def start_habits_game(callback: CallbackQuery, state: FSMContext):
+    """Запуск игры 'Правильные привычки'"""
+    age_group = callback.data.split("_")[2]
+    
+    await state.update_data(
+        game_type="habits",
+        age_group=age_group,
+        score=0,
+        step=0,
+        total_steps=5
+    )
+    
+    await ask_habits_question(callback, state)
+    await callback.answer()
+
+async def ask_habits_question(callback: CallbackQuery, state: FSMContext):
+    """Задаёт вопрос по привычкам"""
+    data = await state.get_data()
+    
+    # Выбираем случайную привычку
+    habit, is_good = random.choice(GOOD_HABITS)
+    
+    await state.update_data(
+        current_habit=habit,
+        correct_is_good=is_good,
+        step=data["step"] + 1
+    )
+    
+    # Создаём клавиатуру
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="✅ Это хорошая привычка",
+            callback_data="habits_answer_good"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="❌ Это плохая привычка",
+            callback_data="habits_answer_bad"
+        )
+    )
+    
+    await callback.message.edit_text(
+        f"👍 **Правильные привычки**\n\n"
+        f"Вопрос {data['step'] + 1}/{data['total_steps']}\n"
+        f"Счет: {data['score']}\n\n"
+        f"Привычка: **{habit}**\n\n"
+        f"Это хорошая или плохая привычка?",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    
+    await state.set_state(HabitsGameStates.playing)
+
+@router.callback_query(HabitsGameStates.playing, F.data.startswith("habits_answer_"))
+async def handle_habits_answer(callback: CallbackQuery, state: FSMContext):
+    user_choice = callback.data.replace("habits_answer_", "")
+    data = await state.get_data()
+    
+    user_is_good = (user_choice == "good")
+    correct_is_good = data["correct_is_good"]
+    
+    if user_is_good == correct_is_good:
+        data["score"] += 10
+        result_text = f"✅ **Правильно!** Это {'хорошая' if correct_is_good else 'плохая'} привычка!"
+    else:
+        result_text = f"❌ **Неправильно!** Это {'хорошая' if correct_is_good else 'плохая'} привычка!"
+    
+    await state.update_data(score=data["score"])
+    
+    if data["step"] < data["total_steps"]:
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(
+                text="➡️ Далее",
+                callback_data="habits_next_question"
+            )
+        )
+        
+        await callback.message.edit_text(
+            result_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="Markdown"
+        )
+        await callback.answer()
+    else:
+        await finish_habits_game(callback, state, result_text)
+
+@router.callback_query(F.data == "habits_next_question")
+async def next_habits_question(callback: CallbackQuery, state: FSMContext):
+    await ask_habits_question(callback, state)
+    await callback.answer()
+
+async def finish_habits_game(callback: CallbackQuery, state: FSMContext, result_text: str):
+    """Завершение игры 'Правильные привычки'"""
+    data = await state.get_data()
+    
+    # Сохраняем результат
+    max_score = data["total_steps"] * 10
+    await save_game_result(
+        user_id=callback.from_user.id,
+        game_type="habits",
+        age_group=data["age_group"],
+        score=data["score"],
+        max_score=max_score,
+        steps=data["total_steps"]
+    )
+    
+    # Финальное сообщение
+    percentage = (data["score"] / max_score) * 100
+    performance = get_performance_text(data["score"], max_score)
+    
+    await callback.message.edit_text(
+        f"{result_text}\n\n"
+        f"🎮 **Игра завершена!**\n\n"
+        f"📊 Результат: {data['score']}/{max_score} очков\n"
+        f"📈 Процент: {percentage:.0f}%\n"
+        f"🏅 {performance}\n\n"
+        f"Что дальше?",
+        reply_markup=create_game_keyboard(data["age_group"], "habits"),
+        parse_mode="Markdown"
+    )
+    
+    await state.clear()
+
+=== Файл: ./handlers/games/__init__.py ===
+
+"""
+Инициализация модуля игр.
+Экспортирует все игровые роутеры.
+"""
+from aiogram import Router
+
+from .menu import router as menu_router
+from .waste_sorting import router as waste_router
+from .good_habits import router as habits_router
+from .right_wrong import router as right_wrong_router
+from .common import router as common_router
+
+# Создаём общий роутер для игр
+games_router = Router()
+
+# Включаем все роутеры игр
+games_router.include_router(common_router)
+games_router.include_router(menu_router)
+games_router.include_router(waste_router)
+games_router.include_router(habits_router)
+games_router.include_router(right_wrong_router)
+
+# Экспортируем для основного бота
+__all__ = ['games_router']
+
+=== Файл: ./handlers/games/menu.py ===
+
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+router = Router()
+
+# ВЫНОСИМ ФУНКЦИЮ СОЗДАНИЯ КЛАВИАТУРЫ ОТДЕЛЬНО
+def get_games_menu_kb():
+    """Возвращает клавиатуру меню игр"""
+    builder = InlineKeyboardBuilder()
+    
+    builder.row(
+        InlineKeyboardButton(
+            text="🎮 Игры для 5-7 классов",
+            callback_data="games_young"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🎮 Игры для 9-11 классов",
+            callback_data="games_teen"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🎮 Игры для студентов",
+            callback_data="games_student"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="◀️ Назад в главное меню",
+            callback_data="back_main_menu"
+        )
+    )
+    
+    return builder.as_markup()
+
+# ХЕНДЛЕР ДЛЯ callback_data="menu_games" (если прилетает из бота)
+@router.callback_query(F.data == "menu_games")
+async def show_games_menu(callback: CallbackQuery):
+    """Главное меню мини-игр (обработчик для callback)"""
+    
+    # Удаляем старое сообщение
+    try:
+        await callback.message.delete()
+    except:
+        pass
+
+    await callback.message.answer(
+        "🎮 **Мини-игры**\n\n"
+        "Выберите возрастную группу:",
+        reply_markup=get_games_menu_kb(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("games_"))
+async def show_age_specific_games(callback: CallbackQuery):
+    """Игры для конкретной возрастной группы"""
+    age_group = callback.data.split("_")[1]  # young, teen, student
+    
+    # Удаляем старое сообщение
+    try:
+        await callback.message.delete()
+    except:
+        pass
+
+    builder = InlineKeyboardBuilder()
+    
+    if age_group == "young":
+        # Игры для 5-7 классов
+        builder.row(
+            InlineKeyboardButton(
+                text="♻️ Сортировка мусора",
+                callback_data=f"game_waste_{age_group}"
+            )
+        )
+        builder.row(
+            InlineKeyboardButton(
+                text="👍 Правильные привычки",
+                callback_data=f"game_habits_{age_group}"
+            )
+        )
+        builder.row(
+            InlineKeyboardButton(
+                text="❓ Что правильно?",
+                callback_data=f"game_rightwrong_{age_group}"
+            )
+        )
+    else:
+        # Для старших групп пока одна игра
+        builder.row(
+            InlineKeyboardButton(
+                text="📖 Сюжетная игра",
+                callback_data=f"game_story_{age_group}"
+            )
+        )
+    
+    builder.row(
+        InlineKeyboardButton(
+            text="◀️ Назад к выбору возраста",
+            callback_data="menu_games"
+        )
+    )
+    
+    age_names = {
+        "young": "5-7 классы",
+        "teen": "9-11 классы", 
+        "student": "Студенты"
+    }
+    
+    await callback.message.answer(
+        f"🎮 Игры для **{age_names[age_group]}**\n\n"
+        "Выберите игру:",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+=== Файл: ./handlers/games/right_wrong.py ===
+
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from data.games_data import RIGHT_WRONG_SCENARIOS
+from .utils import save_game_result, create_game_keyboard, get_performance_text
+import random
+import asyncio
+
+router = Router()
+
+class RightWrongGameStates(StatesGroup):
+    playing = State()
+
+@router.callback_query(F.data.startswith("game_rightwrong_"))
+async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
+    """Запуск игры 'Что правильно?'"""
+    age_group = callback.data.split("_")[2]
+    
+    await state.update_data(
+        game_type="rightwrong",
+        age_group=age_group,
+        score=0,
+        step=0,
+        total_steps=3,
+        used_scenarios=[]
+    )
+    
+    await ask_rightwrong_question(callback, state)
+    await callback.answer()
+
+async def ask_rightwrong_question(callback: CallbackQuery, state: FSMContext):
+    """Задаёт вопрос сценария"""
+    data = await state.get_data()
+    
+    # Выбираем сценарий, который ещё не использовался
+    available_scenarios = [s for s in RIGHT_WRONG_SCENARIOS 
+                          if s not in data.get("used_scenarios", [])]
+    
+    if not available_scenarios:
+        # Если все сценарии использованы, перемешиваем заново
+        await state.update_data(used_scenarios=[])
+        available_scenarios = RIGHT_WRONG_SCENARIOS.copy()
+    
+    scenario, answers = random.choice(available_scenarios)
+    
+    # Обновляем состояние
+    data["used_scenarios"].append((scenario, answers))
+    await state.update_data(
+        current_scenario=scenario,
+        current_answers=answers,
+        step=data["step"] + 1,
+        used_scenarios=data["used_scenarios"]
+    )
+    
+    # Создаём клавиатуру с вариантами (используем индексы для callback_data)
+    builder = InlineKeyboardBuilder()
+    for i, (answer_text, points) in enumerate(answers.items()):
+        # Используем индекс вместо текста для callback_data
+        callback_data = f"rightwrong_answer_{i}"
+        
+        builder.row(
+            InlineKeyboardButton(
+                text=answer_text,
+                callback_data=callback_data
+            )
+        )
+    
+    await callback.message.answer(
+        f"❓ **Что правильно?**\n\n"
+        f"Ситуация {data['step'] + 1}/{data['total_steps']}\n"
+        f"Счет: {data['score']}\n\n"
+        f"**{scenario}**",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    
+    await state.set_state(RightWrongGameStates.playing)
+
+@router.callback_query(RightWrongGameStates.playing, F.data.startswith("rightwrong_answer_"))
+async def handle_rightwrong_answer(callback: CallbackQuery, state: FSMContext):
+    answer_index = int(callback.data.replace("rightwrong_answer_", ""))
+    data = await state.get_data()
+    
+    answers = data["current_answers"]
+    answer_items = list(answers.items())
+    answer_text, points = answer_items[answer_index]
+    
+    data["score"] += points
+    
+    if points > 0:
+        result_text = f"✅ **Отличный выбор!** +{points} очков!"
+    elif points == 0:
+        result_text = "😐 Можно было бы и лучше..."
+    else:
+        result_text = f"❌ **Не самый лучший вариант...** {points} очков"
+    
+    await state.update_data(score=data["score"])
+    
+    if data["step"] < data["total_steps"]:
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(
+                text="➡️ Далее",
+                callback_data="rightwrong_next_question"
+            )
+        )
+        
+        await callback.message.edit_text(
+            result_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="Markdown"
+        )
+        await callback.answer()
+    else:
+        await finish_rightwrong_game(callback, state, result_text)
+
+@router.callback_query(F.data == "rightwrong_next_question")
+async def next_rightwrong_question(callback: CallbackQuery, state: FSMContext):
+    await ask_rightwrong_question(callback, state)
+    await callback.answer()
+
+async def finish_rightwrong_game(callback: CallbackQuery, state: FSMContext, result_text: str):
+    """Завершение игры 'Что правильно?'"""
+    data = await state.get_data()
+    
+    # Максимальный возможный счёт (все ответы по +10)
+    max_score = data["total_steps"] * 10
+    
+    # Сохраняем результат
+    await save_game_result(
+        user_id=callback.from_user.id,
+        game_type="rightwrong",
+        age_group=data["age_group"],
+        score=data["score"],
+        max_score=max_score,
+        steps=data["total_steps"]
+    )
+    
+    # Финальное сообщение
+    percentage = (data["score"] / max_score) * 100 if max_score > 0 else 0
+    performance = get_performance_text(data["score"], max_score)
+    
+    await callback.message.answer(
+        f"{result_text}\n\n"
+        f"🎮 **Игра завершена!**\n\n"
+        f"📊 Результат: {data['score']}/{max_score} очков\n"
+        f"📈 Процент: {percentage:.0f}%\n"
+        f"🏅 {performance}\n\n"
+        f"Что дальше?",
+        reply_markup=create_game_keyboard(data["age_group"], "rightwrong"),
+        parse_mode="Markdown"
+    )
+    
+    await state.clear()
+
+=== Файл: ./handlers/games/utils.py ===
+
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardButton
+from database import AsyncSessionLocal
+from models import GameResult
+from sqlalchemy import select
+
+async def save_game_result(user_id: int, game_type: str, age_group: str, 
+                          score: int, max_score: int, steps: int):
+    """Сохраняет или обновляет результат игры в БД"""
+    async with AsyncSessionLocal() as session:
+        stmt = select(GameResult).where(
+            (GameResult.user_id == user_id) &
+            (GameResult.game_type == game_type) &
+            (GameResult.age_group == age_group)
+        )
+        result = await session.execute(stmt)
+        existing = result.scalar_one_or_none()
+        
+        if existing:
+            # Обновляем если новый счет лучше
+            if score > existing.score:
+                existing.score = score
+                existing.max_score = max_score
+                existing.steps_completed = steps
+        else:
+            # Создаём новый результат
+            new_result = GameResult(
+                user_id=user_id,
+                game_type=game_type,
+                age_group=age_group,
+                score=score,
+                max_score=max_score,
+                steps_completed=steps
+            )
+            session.add(new_result)
+        
+        await session.commit()
+
+def create_game_keyboard(age_group: str, game_type: str):
+    """Создаёт стандартную клавиатуру для игр"""
+    builder = InlineKeyboardBuilder()
+    
+    builder.row(
+        InlineKeyboardButton(
+            text="🔄 Играть снова",
+            callback_data=f"game_{game_type}_{age_group}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🎮 Другие игры",
+            callback_data=f"games_{age_group}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🏠 В главное меню",
+            callback_data="back_main_menu"
+        )
+    )
+    
+    return builder.as_markup()
+
+def get_performance_text(score: int, max_score: int) -> str:
+    """Возвращает текст оценки результатов"""
+    percentage = (score / max_score) * 100
+    
+    if percentage >= 90:
+        return "🏆 Отлично! Ты настоящий эксперт!"
+    elif percentage >= 70:
+        return "👍 Хорошо! Ты много знаешь!"
+    elif percentage >= 50:
+        return "👌 Неплохо! Есть куда стремиться!"
+    else:
+        return "💪 Продолжай учиться! Ты станешь лучше!"
+
+=== Файл: ./handlers/games/waste_sorting.py ===
+
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from data.games_data import WASTE_ITEMS, WASTE_CATEGORIES
+from .utils import save_game_result, create_game_keyboard, get_performance_text
+import random
+import asyncio
+
+router = Router()
+
+class WasteGameStates(StatesGroup):
+    playing = State()
+
+@router.callback_query(F.data.startswith("game_waste_"))
+async def start_waste_game(callback: CallbackQuery, state: FSMContext):
+    """Запуск игры 'Сортировка мусора'"""
+    age_group = callback.data.split("_")[2]
+    
+    # Инициализация состояния
+    await state.update_data(
+        game_type="waste",
+        age_group=age_group,
+        score=0,
+        step=0,
+        total_steps=5
+    )
+    
+    await ask_waste_question(callback, state)
+    await callback.answer()
+
+async def ask_waste_question(callback: CallbackQuery, state: FSMContext):
+    """Задаёт вопрос по сортировке мусора"""
+    data = await state.get_data()
+    
+    # Выбираем случайный предмет
+    item_name = random.choice(list(WASTE_ITEMS.keys()))
+    correct_category = WASTE_ITEMS[item_name]
+    
+    # Обновляем состояние
+    await state.update_data(
+        current_item=item_name,
+        correct_category=correct_category,
+        step=data["step"] + 1
+    )
+    
+    # Создаём клавиатуру с вариантами
+    builder = InlineKeyboardBuilder()
+    categories = WASTE_CATEGORIES.copy()
+    random.shuffle(categories)
+    
+    for category in categories:
+        builder.row(
+            InlineKeyboardButton(
+                text=category,
+                callback_data=f"waste_answer_{category}"
+            )
+        )
+    
+    # Отправляем вопрос
+    await callback.message.edit_text(
+        f"♻️ **Сортировка мусора**\n\n"
+        f"Вопрос {data['step'] + 1}/{data['total_steps']}\n"
+        f"Счет: {data['score']}\n\n"
+        f"Куда выбросить: **{item_name}**?",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    
+    await state.set_state(WasteGameStates.playing)
+
+@router.callback_query(WasteGameStates.playing, F.data.startswith("waste_answer_"))
+async def handle_waste_answer(callback: CallbackQuery, state: FSMContext):
+    selected_category = callback.data.replace("waste_answer_", "")
+    data = await state.get_data()
+    
+    if selected_category == data["correct_category"]:
+        data["score"] += 10
+        result_text = f"✅ **Правильно!** {data['current_item']} — это {data['correct_category']}!"
+    else:
+        result_text = f"❌ **Неправильно!** {data['current_item']} — это {data['correct_category']}"
+    
+    await state.update_data(score=data["score"])
+    
+    if data["step"] < data["total_steps"]:
+        # ПОКАЗЫВАЕМ КНОПКУ "ДАЛЕЕ" вместо ожидания
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(
+                text="➡️ Далее",
+                callback_data="waste_next_question"
+            )
+        )
+        
+        await callback.message.edit_text(
+            result_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="Markdown"
+        )
+        await callback.answer()
+    else:
+        await finish_waste_game(callback, state, result_text)
+
+# ДОБАВЬ НОВЫЙ ХЕНДЛЕР ДЛЯ КНОПКИ "ДАЛЕЕ"
+@router.callback_query(F.data == "waste_next_question")
+async def next_waste_question(callback: CallbackQuery, state: FSMContext):
+    """Переход к следующему вопросу по кнопке"""
+    await ask_waste_question(callback, state)
+    await callback.answer()
+
+async def finish_waste_game(callback: CallbackQuery, state: FSMContext, result_text: str):
+    """Завершение игры 'Сортировка мусора'"""
+    data = await state.get_data()
+    
+    # Сохраняем результат
+    max_score = data["total_steps"] * 10
+    await save_game_result(
+        user_id=callback.from_user.id,
+        game_type="waste",
+        age_group=data["age_group"],
+        score=data["score"],
+        max_score=max_score,
+        steps=data["total_steps"]
+    )
+    
+    # Создаём финальное сообщение
+    percentage = (data["score"] / max_score) * 100
+    performance = get_performance_text(data["score"], max_score)
+    
+    await callback.message.edit_text(
+        f"{result_text}\n\n"
+        f"🎮 **Игра завершена!**\n\n"
+        f"📊 Результат: {data['score']}/{max_score} очков\n"
+        f"📈 Процент: {percentage:.0f}%\n"
+        f"🏅 {performance}\n\n"
+        f"Что дальше?",
+        reply_markup=create_game_keyboard(data["age_group"], "waste"),
+        parse_mode="Markdown"
+    )
+    
+    await state.clear()
+
+=== Файл: ./handlers/__init__.py ===
+
+
+
+=== Файл: ./handlers/main_menu.py ===
+
+from aiogram import Router, F
+from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
+
+from keyboards.main_menu_kb import get_main_kb
+from keyboards.settings_kb import get_settings_kb
+
+from handlers.sdg import show_sdg_list
+from handlers.questions import ask_question_start
+from handlers.ambassador import start_ambassador_form
+
+router = Router()
+
+@router.callback_query(F.data.startswith("menu_"))
+async def handle_main_menu(callback: CallbackQuery, state: FSMContext):
+    menu_action = callback.data.replace("menu_", "")
+
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
+    menu_action = callback.data.replace("menu_", "")
+    
+    if menu_action == "sdg":
+        await show_sdg_list(callback.message)
+    elif menu_action == "games":
+        from handlers.games.menu import get_games_menu_kb
+        
+        # УДАЛЯЕМ старое сообщение и отправляем НОВОЕ
+        try:
+            await callback.message.delete()
+        except:
+            pass
+        
+        # Отправляем новое сообщение с играми
+        await callback.message.answer(
+            "🎮 **Мини-игры**\n\nВыберите возрастную группу:",
+            reply_markup=get_games_menu_kb(),
+            parse_mode="Markdown"
+        )
+        return
+    elif menu_action == "question":
+        await ask_question_start(callback, state)
+        return
+    elif menu_action == "ambassador":
+        await start_ambassador_form(callback, state)
+        return
+    elif menu_action == "contest":
+        await callback.message.answer("🎥 Конкурс 'Я есть ЦУР' в разработке")
+    elif menu_action == "feedback":
+        await callback.message.answer("📊 Обратная связь в разработке")
+    elif menu_action == "settings":
+        await callback.message.answer(
+            "⚙️ **Настройки профиля**\n\n"
+            "Выберите действие:",
+            reply_markup=get_settings_kb(),  # ← Клавиатура настроек
+            parse_mode="Markdown"
+        )
+    
+    await callback.answer()
+
+=== Файл: ./handlers/questions.py ===
+
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.enums import ParseMode
+
+from database import AsyncSessionLocal
+from models import Question
+from keyboards.main_menu_kb import get_main_kb
+from handlers.states.question_states import QuestionForm
+from config import ADMIN_CHAT_ID
+from sqlalchemy import select
+
+router = Router()
+
+# Запуск режима вопроса
+@router.callback_query(F.data == "menu_question")
+async def ask_question_start(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(QuestionForm.text)
+    await callback.message.answer(
+        "📝 **Задайте вопрос эксперту**\n\n"
+        "Напишите ваш вопрос и мы отправим его специалисту.\n"
+        "Ответ придёт в этом же чате.\n\n"
+        "Для отмены используйте /cancel",
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+# Отмена вопроса
+@router.message(Command("cancel"))
+async def cancel_question(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer(
+        "❌ Вопрос отменён.",
+        reply_markup=get_main_kb()
+    )
+
+# Приём вопроса от пользователя
+@router.message(QuestionForm.text)
+async def process_question(message: Message, state: FSMContext, bot):
+    if len(message.text) < 5:
+        await message.answer("❌ Вопрос слишком короткий. Минимум 5 символов.\nПопробуйте еще раз.")
+        return
+    
+    # Сохраняем в БД
+    async with AsyncSessionLocal() as session:
+        question = Question(
+            user_id=message.from_user.id,
+            user_name=message.from_user.username or message.from_user.first_name,
+            message_id=message.message_id,
+            text=message.text
+        )
+        session.add(question)
+        await session.flush()  # Получаем ID вопроса
+        
+        # Отправляем в админ-чат
+        admin_msg = await bot.send_message(
+            ADMIN_CHAT_ID,
+            f"❓ Вопрос #{question.id}\n"
+            f"От: {question.user_name} (ID: {question.user_id})\n"
+            f"Время: {question.created_at.strftime('%H:%M %d.%m.%Y')}\n"
+            f"─────────────────\n"
+            f"{question.text}\n\n"
+            f"Ответить: /reply {question.id} [текст ответа]"
+        )
+        
+        # Сохраняем ID сообщения в админ-чате
+        question.admin_chat_message_id = admin_msg.message_id
+        await session.commit()
+    
+    # Подтверждаем пользователю
+    await message.answer(
+        f"✅ Ваш вопрос отправлен эксперту!\n"
+        f"Ответ придёт в этом чате.",
+        reply_markup=get_main_kb()
+    )
+    
+    await state.clear()
+
+=== Файл: ./handlers/quizzes.py ===
+
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+
+from database import AsyncSessionLocal
+from models import QuizResult, User
+from data.quiz_questions import QUIZ_QUESTIONS
+from handlers.states.quiz_states import QuizStates
+from sqlalchemy import select
+import random
+
+router = Router()
+
+async def get_user_age_group(user_id: int):
+    async with AsyncSessionLocal() as session:
+        stmt = select(User.age_group).where(User.id == user_id)
+        result = await session.execute(stmt)
+        return result.scalar()
+
+async def get_user_quiz_result(user_id: int, sdg_id: int, difficulty: str, age_group: str):
+    async with AsyncSessionLocal() as session:
+        stmt = select(QuizResult).where(
+            (QuizResult.user_id == user_id) &
+            (QuizResult.sdg_id == sdg_id) &
+            (QuizResult.difficulty == difficulty) &
+            (QuizResult.age_group == age_group)
+        ).order_by(QuizResult.created_at.desc())
+        result = await session.execute(stmt)
+        row = result.first()
+        return row[0] if row else None
+
+async def save_quiz_result(user_id: int, sdg_id: int, difficulty: str, 
+                          age_group: str, score: int, total: int):
+    async with AsyncSessionLocal() as session:
+        stmt = select(QuizResult).where(
+            (QuizResult.user_id == user_id) &
+            (QuizResult.sdg_id == sdg_id) &
+            (QuizResult.difficulty == difficulty) &
+            (QuizResult.age_group == age_group)
+        )
+        result = await session.execute(stmt)
+        existing = result.scalar_one_or_none()
+        
+        if existing:
+            existing.score = score
+            existing.total = total
+        else:
+            new_result = QuizResult(
+                user_id=user_id,
+                sdg_id=sdg_id,
+                difficulty=difficulty,
+                age_group=age_group,
+                score=score,
+                total=total
+            )
+            session.add(new_result)
+        await session.commit()
+
+async def show_difficulty_selection(callback: CallbackQuery, sdg_id: int, age_group: str):
+    builder = InlineKeyboardBuilder()
+    builder.add(
+        InlineKeyboardButton(text="🟢 Легкий", callback_data=f"diff_easy_{sdg_id}"),
+        InlineKeyboardButton(text="🟡 Средний", callback_data=f"diff_medium_{sdg_id}"),
+        InlineKeyboardButton(text="🔴 Сложный", callback_data=f"diff_hard_{sdg_id}"),
+    )
+    builder.adjust(1)
+    
+    await callback.message.edit_text(
+        "Выберите уровень сложности:",
+        reply_markup=builder.as_markup()
+    )
+
+async def start_new_quiz(callback: CallbackQuery, state: FSMContext, sdg_id: int, 
+                        difficulty: str, age_group: str):
+    try:
+        questions = QUIZ_QUESTIONS[sdg_id][age_group][difficulty]
+    except KeyError:
+        await callback.answer("❌ Вопросы не найдены")
+        return
+    
+    if not questions:
+        await callback.answer("❌ Вопросы отсутствуют")
+        return
+    
+    selected_questions = random.sample(questions, min(10, len(questions)))
+    
+    await state.update_data(
+        sdg_id=sdg_id,
+        difficulty=difficulty,
+        age_group=age_group,
+        questions=selected_questions,
+        current_question=0,
+        score=0
+    )
+    
+    await show_question(callback, state)
+
+@router.callback_query(F.data.startswith("quiz_"))
+async def start_quiz(callback: CallbackQuery, state: FSMContext):
+    sdg_id = int(callback.data.split("_")[1])
+    user_age_group = await get_user_age_group(callback.from_user.id)
+    
+    if not user_age_group:
+        await callback.answer("❌ Укажите возраст в профиле", show_alert=True)
+        return
+    
+    await show_difficulty_selection(callback, sdg_id, user_age_group)
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("diff_"))
+async def handle_difficulty_selection(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split("_")
+    difficulty = parts[1]
+    sdg_id = int(parts[2])
+    
+    user_age_group = await get_user_age_group(callback.from_user.id)
+    if not user_age_group:
+        await callback.answer("❌ Ошибка: возраст не указан")
+        return
+    
+    previous_result = await get_user_quiz_result(
+        callback.from_user.id, 
+        sdg_id, 
+        difficulty,
+        user_age_group
+    )
+    
+    if previous_result:
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(
+                text="🔄 Попробовать еще раз",
+                callback_data=f"restart_{difficulty}_{sdg_id}"
+            ),
+        )
+        builder.row(
+            InlineKeyboardButton(
+                text="◀️ Выбрать другую сложность",
+                callback_data=f"quiz_{sdg_id}"
+            )
+        )
+        
+        await callback.message.edit_text(
+            f"📊 Ваш предыдущий результат (сложность: {difficulty}):\n"
+            f"Счёт: {previous_result.score}/{previous_result.total}\n\n"
+            f"Хотите попробовать еще раз?",
+            reply_markup=builder.as_markup()
+        )
+    else:
+        await start_new_quiz(callback, state, sdg_id, difficulty, user_age_group)
+    
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("restart_"))
+async def restart_quiz(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split("_")
+    difficulty = parts[1]
+    sdg_id = int(parts[2])
+    
+    user_age_group = await get_user_age_group(callback.from_user.id)
+    if not user_age_group:
+        await callback.answer("❌ Ошибка: возраст не указан")
+        return
+    
+    await start_new_quiz(callback, state, sdg_id, difficulty, user_age_group)
+    await callback.answer()
+
+async def show_question(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    question_index = data["current_question"]
+    question = data["questions"][question_index]
+    
+    builder = InlineKeyboardBuilder()
+    for i, option in enumerate(question["options"]):
+        builder.add(InlineKeyboardButton(
+            text=option,
+            callback_data=f"answer_{i}"
+        ))
+    builder.adjust(1)
+    
+    await callback.message.edit_text(
+        f"❓ Вопрос {question_index + 1}/{len(data['questions'])}:\n\n"
+        f"{question['question']}",
+        reply_markup=builder.as_markup()
+    )
+    
+    await state.set_state(QuizStates.waiting_answer)
+
+@router.callback_query(F.data.startswith("answer_"))
+async def handle_answer(callback: CallbackQuery, state: FSMContext):
+    user_answer = int(callback.data.split("_")[1])
+    data = await state.get_data()
+    
+    question = data["questions"][data["current_question"]]
+    is_correct = user_answer == question["correct"]
+    
+    if is_correct:
+        data["score"] += 1
+    
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(
+        text="➡️ Далее",
+        callback_data="next_question"
+    ))
+    
+    correct_answer_text = question["options"][question["correct"]]
+    await callback.message.edit_text(
+        f"{'✅ Верно!' if is_correct else f'❌ Неверно. Правильно: {correct_answer_text}'}\n\n"
+        f"💡 {question['explanation']}",
+        reply_markup=builder.as_markup()
+    )
+    
+    await state.update_data(**data)
+    await state.set_state(QuizStates.waiting_next)
+    await callback.answer()
+
+@router.callback_query(F.data == "next_question")
+async def next_question(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    data["current_question"] += 1
+    await state.update_data(**data)
+    
+    if data["current_question"] < len(data["questions"]):
+        await show_question(callback, state)
+    else:
+        await finish_quiz(callback, state)
+    await callback.answer()
+
+async def finish_quiz(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    score = data["score"]
+    total = len(data["questions"])
+    difficulty = data["difficulty"]
+    sdg_id = data["sdg_id"]
+    age_group = data["age_group"]
+    
+    await save_quiz_result(
+        user_id=callback.from_user.id,
+        sdg_id=sdg_id,
+        difficulty=difficulty,
+        age_group=age_group,
+        score=score,
+        total=total
+    )
+    
+    percentage = (score / total) * 100
+    
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="🔄 Попробовать еще раз",
+            callback_data=f"restart_{difficulty}_{sdg_id}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="📚 Выбрать другую сложность",
+            callback_data=f"quiz_{sdg_id}"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="◀️ Вернуться к ЦУР",
+            callback_data=f"sdg_{sdg_id}"
+        )
+    )
+    
+    await callback.message.edit_text(
+        f"📊 **Результат квиза** (сложность: {difficulty})\n\n"
+        f"Правильных ответов: {score}/{total}\n"
+        f"Процент: {percentage:.0f}%\n\n"
+        f"Результат сохранён.",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    
+    await state.clear()
+
+=== Файл: ./handlers/sdg.py ===
+
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
+from keyboards.sdg_keyboards import get_sdg_list_kb, get_sdg_detail_kb
+from keyboards.main_menu_kb import get_main_kb
+from utils.constants import SDG_TITLES
+
+router = Router()
+
+@router.message(F.text == "📚 Цели устойчивого развития")
+@router.callback_query(F.data == "menu_sdg")
+async def show_sdg_list(update: Message | CallbackQuery):
+    if isinstance(update, CallbackQuery):
+        message = update.message
+        await update.answer()
+        await message.delete()
+    else:
+        message = update
+    
+    await message.answer(
+        "Выберите цель устойчивого развития:",
+        reply_markup=get_sdg_list_kb()
+    )
+
+@router.callback_query(F.data.startswith("sdg_"))
+async def show_sdg_detail(callback: CallbackQuery):
+    sdg_num = int(callback.data.split("_")[1])
+    title = SDG_TITLES.get(sdg_num)
+    
+    await callback.message.edit_text(
+        f"🎯 **Цель {sdg_num}: {title}**\n\n"
+        f"*Описание:* В разработке\n"
+        f"*Для вашего возраста:* контент скоро появится",
+        parse_mode="Markdown",
+        reply_markup=get_sdg_detail_kb(sdg_num)
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "back_to_sdg_list")
+async def back_to_sdg_list_handler(callback: CallbackQuery):
+    await show_sdg_list(callback)
+    await callback.answer()
+
+@router.callback_query(F.data == "back_to_main_menu")
+async def back_to_main_menu_handler(callback: CallbackQuery):
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
+    await callback.message.answer(
+        "Главное меню:",
+        reply_markup=get_main_kb()
+    )
+    await callback.answer()
+
+=== Файл: ./handlers/settings.py ===
+
+from aiogram import Router, F
+from aiogram.types import CallbackQuery
+from database import AsyncSessionLocal
+from models import User
+from sqlalchemy import select
+from keyboards.age_kb import get_age_kb
+from keyboards.main_menu_kb import get_main_kb
+from keyboards.settings_kb import get_settings_kb
+
+router = Router()
+
+@router.callback_query(F.data == "menu_settings")
+async def show_settings(callback: CallbackQuery):
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
+    await callback.message.answer(
+        "⚙️ **Настройки профиля**\n\n"
+        "Здесь вы можете изменить свои данные:",
+        reply_markup=get_settings_kb(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "settings_change_age")
+async def change_age(callback: CallbackQuery):
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
+    await callback.message.answer(
+        "Выберите новую возрастную группу:",
+        reply_markup=get_age_kb()
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("age_"))
+async def process_new_age(callback: CallbackQuery):
+    age_map = {
+        "age_young": "young",
+        "age_teen": "teen", 
+        "age_student": "student"
+    }
+    
+    age_group = age_map.get(callback.data)
+    
+    async with AsyncSessionLocal() as session:
+        stmt = select(User).where(User.id == callback.from_user.id)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if user:
+            user.age_group = age_group
+            await session.commit()
+    
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
+    await callback.message.answer(
+        f"✅ Возрастная группа обновлена!\n\n"
+        "Возвращаемся в главное меню:",
+        reply_markup=get_main_kb()
+    )
+    await callback.answer()
+
+=== Файл: ./handlers/start.py ===
+
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import Command
+from database import AsyncSessionLocal
+from models import User
+from sqlalchemy import select
+from keyboards.age_kb import get_age_kb
+from keyboards.main_menu_kb import get_main_kb
+
+router = Router()
+
+@router.message(Command("start"))
+async def command_start(message: Message):
+    async with AsyncSessionLocal() as session:
+        stmt = select(User).where(User.id == message.from_user.id)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            # Новый пользователь
+            await message.answer(
+                "👋 Привет! Для начала выбери свою возрастную группу:",
+                reply_markup=get_age_kb()
+            )
+        elif not user.age_group:
+            # Пользователь есть, но возраст не выбран
+            await message.answer(
+                "📊 Выбери свою возрастную группу:",
+                reply_markup=get_age_kb()
+            )
+        else:
+            # Всё есть, показываем главное меню
+            await message.answer(
+                f"✅ Добро пожаловать, {user.username or 'пользователь'}!\n\n"
+                "Выберите раздел:",
+                reply_markup=get_main_kb()
+            )
+
+@router.callback_query(F.data.startswith("age_"))
+async def set_age_inline(callback: CallbackQuery):
+    age_map = {
+        "age_young": "young",
+        "age_teen": "teen", 
+        "age_student": "student"
+    }
+    
+    age_group = age_map.get(callback.data)
+    
+    if not age_group:
+        await callback.answer("Ошибка выбора возраста")
+        return
+    
+    async with AsyncSessionLocal() as session:
+        stmt = select(User).where(User.id == callback.from_user.id)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            # Создаём нового пользователя
+            user = User(
+                id=callback.from_user.id,
+                username=callback.from_user.username or callback.from_user.first_name,
+                age_group=age_group
+            )
+            session.add(user)
+        else:
+            # Обновляем существующего
+            user.age_group = age_group
+        
+        await session.commit()
+    
+    # Удаляем сообщение с выбором возраста
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
+    # Показываем главное меню
+    await callback.message.answer(
+        f"✅ Возрастная группа сохранена!\n\n"
+        "Теперь выберите раздел:",
+        reply_markup=get_main_kb()
+    )
+    await callback.answer()
+
+=== Файл: ./handlers/states/ambasador_states.py ===
+
+from aiogram.fsm.state import State, StatesGroup
+
+class AmbassadorForm(StatesGroup):
+    name = State()
+    age = State()
+    institution = State()
+    city = State()
+    contact = State()
+    role = State()
+    confirm = State()
+
+=== Файл: ./handlers/states/__init__.py ===
+
+
+
+=== Файл: ./handlers/states/question_states.py ===
+
+from aiogram.fsm.state import State, StatesGroup
+
+class QuestionForm(StatesGroup):
+    text = State()  # Ожидаем текст вопроса
+
+=== Файл: ./handlers/states/quiz_states.py ===
+
+from aiogram.fsm.state import State, StatesGroup
+
+class QuizStates(StatesGroup):
+    waiting_answer = State()   # Ждём ответ на вопрос
+    waiting_next = State()     # Ждём нажатия "Далее"
+
+=== Файл: ./keyboards/age_kb.py ===
+
+from aiogram.types import InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+def get_age_kb():
+    builder = InlineKeyboardBuilder()
+    
+    builder.row(
+        InlineKeyboardButton(text="5-7 класс", callback_data="age_young"),
+        InlineKeyboardButton(text="9-11 класс", callback_data="age_teen"),
+    )
+    
+    builder.row(
+        InlineKeyboardButton(text="Студент", callback_data="age_student"),
+    )
+    
+    return builder.as_markup()
+
+=== Файл: ./keyboards/__init.py ===
+
+
+
+=== Файл: ./keyboards/main_menu_kb.py ===
+
+from aiogram.types import InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+def get_main_kb():
+    builder = InlineKeyboardBuilder()
+    
+    builder.row(
+        InlineKeyboardButton(text="📚 Цели устойчивого развития", callback_data="menu_sdg"),
+        InlineKeyboardButton(text="🎮 Мини-игры", callback_data="menu_games"),
+    )
+    
+    builder.row(
+        InlineKeyboardButton(text="❓ Вопрос эксперту", callback_data="menu_question"),
+        InlineKeyboardButton(text="🎓 Стать посланником", callback_data="menu_ambassador"),
+    )
+    
+    builder.row(
+        InlineKeyboardButton(text="🎥 Конкурс «Я есть ЦУР»", callback_data="menu_contest"),
+        InlineKeyboardButton(text="📊 Обратная связь", callback_data="menu_feedback"),
+    )
+    
+    builder.row(
+        InlineKeyboardButton(text="⚙️ Настройки профиля", callback_data="menu_settings"),
+    )
+    
+    return builder.as_markup()
+
+=== Файл: ./keyboards/sdg_keyboards.py ===
+
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from utils.constants import SDG_TITLES
+
+def get_sdg_list_kb():
+    """Клавиатура со списком 17 ЦУР"""
+    builder = InlineKeyboardBuilder()
+    
+    for num, title in SDG_TITLES.items():
+        short_title = title[:30] + "..." if len(title) > 30 else title
+        builder.add(InlineKeyboardButton(
+            text=f"{num}. {short_title}",
+            callback_data=f"sdg_{num}"
+        ))
+    
+    builder.adjust(2)
+    builder.row(InlineKeyboardButton(
+        text="◀️ Назад в меню",
+        callback_data="back_to_main_menu"
+    ))
+    
+    return builder.as_markup()
+
+def get_sdg_detail_kb(sdg_num: int):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📝 Пройти квиз", callback_data=f"quiz_{sdg_num}")],
+        [InlineKeyboardButton(text="🎥 Видео", callback_data=f"video_{sdg_num}")],
+        [InlineKeyboardButton(text="📖 Подробнее", callback_data=f"more_{sdg_num}")],
+        [InlineKeyboardButton(text="◀️ Назад к списку", callback_data="back_to_sdg_list")]
+    ])
+
+=== Файл: ./keyboards/settings_kb.py ===
+
+from aiogram.types import InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+def get_settings_kb():
+    builder = InlineKeyboardBuilder()
+    
+    builder.row(
+        InlineKeyboardButton(text="✏️ Изменить возраст", callback_data="settings_change_age"),
+    )
+    
+    builder.row(
+        InlineKeyboardButton(text="◀️ Назад в меню", callback_data="back_to_main_menu"),
+    )
+    
+    return builder.as_markup()
+
+=== Файл: ./models.py ===
+
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Text, ForeignKey, UniqueConstraint
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(BigInteger, primary_key=True)
+    username = Column(String, nullable=True)
+    age_group = Column(String) # 'young', 'teen', 'student'
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Question(Base):
+    __tablename__ = "questions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)  # ID пользователя задавшего вопрос
+    user_name = Column(String)    # Имя пользователя (для удобства)
+    message_id = Column(BigInteger)  # ID сообщения с вопросом в чате пользователя
+    admin_chat_message_id = Column(BigInteger)  # ID сообщения в админ-чате
+    text = Column(Text)  # Текст вопроса
+    status = Column(String, default='pending')  # pending/answered/rejected
+    answer = Column(Text, nullable=True)  # Ответ админа
+    created_at = Column(DateTime, default=datetime.utcnow)
+    answered_at = Column(DateTime, nullable=True)
+
+class QuizResult(Base):
+    __tablename__ = "quiz_results"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    sdg_id = Column(Integer)
+    difficulty = Column(String)
+    age_group = Column(String)  # ← ДОБАВЛЯЕМ
+    score = Column(Integer)
+    total = Column(Integer)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    
+    # Обновляем уникальный индекс
+    __table_args__ = (
+        UniqueConstraint('user_id', 'sdg_id', 'difficulty', 'age_group', 
+                       name='uq_user_sdg_diff_age'),
+    )
+
+class GameResult(Base):
+    __tablename__ = "game_results"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    game_type = Column(String)  # 'waste', 'habits', 'rightwrong', 'story'
+    age_group = Column(String)  # 'young', 'teen', 'student'
+    difficulty = Column(String, nullable=True)  # Если в играх будет сложность
+    score = Column(Integer)  # Общий счет
+    max_score = Column(Integer)  # Максимально возможный
+    steps_completed = Column(Integer)  # Сколько шагов пройдено
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        UniqueConstraint('user_id', 'game_type', 'age_group', name='uq_user_game_age'),
+    )
+
+class AmbassadorApplication(Base):
+    __tablename__ = "ambassador_applications"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    full_name = Column(String)  # Имя
+    age = Column(Integer)       # Возраст
+    institution = Column(String) # Школа/вуз
+    city = Column(String)       # Город
+    contact = Column(String)    # Телефон/Telegram
+    role = Column(String)       # Роль: ambassador, lecturer, eco
+    status = Column(String, default='pending')  # pending/approved/rejected
+    created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+
+=== Файл: ./services/__init__.py ===
+
+
+
+=== Файл: ./services/sdg_service.py ===
+
+
+
+=== Файл: ./services/user_service.py ===
+
+
+
+=== Файл: ./utils/constants.py ===
+
+SDG_TITLES = {
+    1: "ЦУР 1 Повсеместная ликвидация нищеты во всех её формах",
+    2: "ЦУР 2 Ликвидация голода, обеспечение продовольственной безопасности и улучшение питания и содействие устойчивому развитию сельского хозяйства",
+    3: "ЦУР 3 Обеспечение здорового образа жизни и содействие благополучию для всех в любом возрасте",
+    4: "ЦУР 4 Обеспечение всеохватного и справедливого качественного образования и поощрение возможности обучения на протяжении всей жизни для всех",
+    5: "ЦУР 5 Обеспечение гендерного равенства и расширение прав и возможностей всех женщин и девочек",
+    6: "ЦУР 6 Обеспечение наличия и рационального использования водных ресурсов и санитарии для всех",
+    7: "ЦУР 7 Обеспечение доступа к недорогостоящим, надёжным, устойчивым и современным источникам энергии для всех",
+    8: "ЦУР 8 Содействие неуклонному, всеохватному и устойчивому экономическому росту, полной и производительной занятости и достойной работе для всех",
+    9: "ЦУР 9 Создание прочной инфраструктуры, содействие обеспечению всеохватной и устойчивой индустриализации и внедрению инноваций",
+    10: "ЦУР 10 Снижение уровня неравенства внутри стран и между ними",
+    11: "ЦУР 11 Обеспечение открытости, безопасности, жизнестойкости и устойчивости городов и населённых пунктов",
+    12: "ЦУР 12 Обеспечение рациональных моделей потребления и производства",
+    13: "ЦУР 13 Принятие срочных мер по борьбе с изменением климата и его последствиями",
+    14: "ЦУР 14 Сохранение и рациональное использование океанов, морей и морских ресурсов в интересах устойчивого развития",
+    15: "ЦУР 15 Защита, восстановление экосистем суши и содействие их рациональному использованию, рациональное управление лесами, борьба с опустыниванием, прекращение и обращение вспять процесса деградации земель и прекращение процесса утраты биологического разно",
+    16: "ЦУР 16 Содействие построению миролюбивых и открытых обществ в интересах устойчивого развития, обеспечение доступа к правосудию для всех и создание эффективных, подотчётных и основанных на широком участии учреждений на всех уровнях",
+    17: "ЦУР 17 Укрепление средств достижения устойчивого развития и активизация работы механизмов глобального партнёрства в интересах устойчивого развития",
+}
+
+=== Файл: ./utils/__init__.py ===
+
+
+
