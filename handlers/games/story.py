@@ -15,6 +15,22 @@ from handlers.games.utils import save_game_result, create_game_keyboard
 logger = logging.getLogger(__name__)
 router = Router()
 
+from keyboards.story_kb import story_stats_kb
+
+@router.callback_query(F.data == "story_show_stats")
+async def show_stats(callback: CallbackQuery, state: FSMContext):
+    """Показывает текущие статы игрока"""
+    data = await state.get_data()
+    scores = data.get("scores", {})
+    
+    if scores:
+        text = f"📊 **Текущие баллы:**\n\n{engine.format_scores(scores)}"
+    else:
+        text = "📊 Статистика пока не накоплены."
+    
+    await callback.message.answer(text, parse_mode="Markdown")
+    await callback.answer()
+
 # Состояния игры
 class StoryGameStates(StatesGroup):
     viewing_intro = State()
