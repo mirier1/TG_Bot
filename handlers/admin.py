@@ -70,7 +70,8 @@ async def reply_to_question(message: Message, command: CommandObject, bot):
 
 @router.message(Command("export_feedback"))
 async def export_feedback(message: Message):
-    if not is_admin(message):
+    if message.from_user.id not in ADMIN_IDS:
+        await message.answer("❌ Недостаточно прав")
         return
     
     async with AsyncSessionLocal() as session:
@@ -78,20 +79,22 @@ async def export_feedback(message: Message):
         result = await session.execute(stmt)
         feedbacks = result.scalars().all()
     
-    # Генерация CSV
+    if not feedbacks:
+        await message.answer("📭 Нет данных для выгрузки")
+        return
+    
     import csv
     import io
+    from aiogram.types import BufferedInputFile
     
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["id", "user_id", "usefulness", "interest", "clarity", "comment", "created_at"])
+    writer.writerow(["id", "user_id", "sdg_id", "usefulness", "interest", "clarity", "created_at"])
     
     for f in feedbacks:
-        writer.writerow([f.id, f.user_id, f.usefulness, f.interest, f.clarity, f.comment, f.created_at])
+        writer.writerow([f.id, f.user_id, f.sdg_id, f.usefulness, f.interest, f.clarity, f.created_at])
     
-    # Отправка файла
-    from aiogram.types import BufferedInputFile
     await message.answer_document(
-        BufferedInputFile(output.getvalue().encode(), filename="feedback.csv"),
+        BufferedInputFile(output.getvalue().encode('utf-8'), filename="feedback.csv"),
         caption="📊 Выгрузка обратной связи"
     )

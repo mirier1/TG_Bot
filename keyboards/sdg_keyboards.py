@@ -26,5 +26,6 @@ def get_sdg_detail_kb(sdg_num: int):
         [InlineKeyboardButton(text="📝 Пройти квиз", callback_data=f"quiz_{sdg_num}")],
         [InlineKeyboardButton(text="🎥 Видео", callback_data=f"video_{sdg_num}")],
         [InlineKeyboardButton(text="📖 Подробнее", callback_data=f"more_{sdg_num}")],
+        [InlineKeyboardButton(text="📊 Оценить лекцию", callback_data=f"rate_{sdg_num}")],
         [InlineKeyboardButton(text="◀️ Назад к списку", callback_data="back_to_sdg_list")]
     ])
