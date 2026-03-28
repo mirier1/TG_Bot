@@ -11,14 +11,13 @@ from sqlalchemy import select, delete
 from database import AsyncSessionLocal
 from models import User, StorySave
 from data.story_engine import GameEngine
-from keyboards.story_kb import story_next_kb, story_end_kb, story_options_kb
+from keyboards.story_kb import story_next_kb, story_end_kb
 from keyboards.main_menu_kb import get_main_kb
 from handlers.games.utils import save_game_result, create_game_keyboard
 
 logger = logging.getLogger(__name__)
 router = Router()
 
-# Состояния игры
 class StoryGameStates(StatesGroup):
     viewing_intro = State()
     answering = State()
@@ -27,19 +26,15 @@ class StoryGameStates(StatesGroup):
     viewing_epilogue = State()
     viewing_ending = State()
 
-# Инициализация движка
 engine = GameEngine("data/scenario.json")
 
-# Вспомогательная функция для получения age_group пользователя
 async def get_user_age_group(user_id: int) -> str | None:
     async with AsyncSessionLocal() as session:
         stmt = select(User.age_group).where(User.id == user_id)
         result = await session.execute(stmt)
         return result.scalar()
 
-# Функции сохранения/загрузки
 async def save_game_progress(user_id: int, state_data: dict) -> bool:
-    """Сохраняет прогресс игры"""
     try:
         save_data = {
             "scores": state_data.get("scores", {}),
@@ -73,7 +68,6 @@ async def save_game_progress(user_id: int, state_data: dict) -> bool:
         return False
 
 async def load_game_progress(user_id: int) -> dict | None:
-    """Загружает сохранённый прогресс игры"""
     try:
         async with AsyncSessionLocal() as session:
             stmt = select(StorySave).where(StorySave.user_id == user_id)
@@ -86,7 +80,6 @@ async def load_game_progress(user_id: int) -> dict | None:
     return None
 
 async def delete_game_progress(user_id: int) -> bool:
-    """Удаляет сохранённый прогресс"""
     try:
         async with AsyncSessionLocal() as session:
             stmt = delete(StorySave).where(StorySave.user_id == user_id)
@@ -98,7 +91,6 @@ async def delete_game_progress(user_id: int) -> bool:
         return False
 
 async def start_new_story_game(callback: CallbackQuery, state: FSMContext, age_group: str):
-    """Начинает новую игру (без проверки сохранения)"""
     try:
         await callback.message.delete()
     except:
@@ -116,33 +108,26 @@ async def start_new_story_game(callback: CallbackQuery, state: FSMContext, age_g
         game_type="story"
     )
     await state.set_state(StoryGameStates.viewing_intro)
-
     await callback.message.answer(
         engine.intro_text,
         reply_markup=story_next_kb()
     )
     await callback.answer()
 
-# Обработчик запуска игры
-@router.callback_query(F.data.startswith("game_story_"))
+# Основной обработчик запуска – без возрастных ограничений
+@router.callback_query(F.data == "game_story")
 async def start_story_game(callback: CallbackQuery, state: FSMContext):
-    age_group = callback.data.split("_")[2]  # 'teen' или 'student'
-    user_age = await get_user_age_group(callback.from_user.id)
-
-    if user_age not in ("teen", "student"):
-        await callback.answer(
-            "❌ Эта игра доступна только для 9–11 классов и студентов.\n"
-            "Измените возраст в настройках профиля.",
-            show_alert=True
-        )
-        return
-
+    """Запуск сюжетной игры – доступен всем"""
+    # Проверяем наличие сохранения
     saved_data = await load_game_progress(callback.from_user.id)
     if saved_data:
         builder = InlineKeyboardBuilder()
         builder.row(
             InlineKeyboardButton(text="▶️ Продолжить", callback_data="story_continue"),
             InlineKeyboardButton(text="🔄 Начать заново", callback_data="story_new")
+        )
+        builder.row(
+            InlineKeyboardButton(text="◀️ Выйти в меню", callback_data="back_main_menu")
         )
         await callback.message.answer(
             "📀 **Найдено сохранение!**\n\n"
@@ -152,9 +137,11 @@ async def start_story_game(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
 
-    await start_new_story_game(callback, state, age_group)
+    # Если сохранения нет, определяем возраст (используется только для статистики)
+    user_age = await get_user_age_group(callback.from_user.id) or "teen"
+    await start_new_story_game(callback, state, user_age)
 
-# Обработчик "Далее"
+# Обработчик "Далее" (без изменений)
 @router.callback_query(F.data == "story_next")
 async def story_next(callback: CallbackQuery, state: FSMContext):
     cur_state = await state.get_state()
@@ -167,37 +154,30 @@ async def story_next(callback: CallbackQuery, state: FSMContext):
 
     if cur_state == StoryGameStates.viewing_intro.state:
         await show_question(callback.message, state, "1")
-
     elif cur_state == StoryGameStates.viewing_result.state:
         step = data.get("next_step", "question")
-
         if step == "checkpoint":
             sc = data["scores"]
             txt = f"📊 **Твои текущие баллы:**\n\n{engine.format_scores(sc)}"
             await state.set_state(StoryGameStates.viewing_checkpoint)
             await callback.message.answer(txt, reply_markup=story_next_kb(), parse_mode="Markdown")
-
         elif step == "finale":
             sc = data["scores"]
             fb = data.get("bonuses", 0)
             branch = engine.calculate_finale(sc, fb)
             await state.update_data(branch=branch)
             await show_question(callback.message, state, f"46{branch}")
-
         elif step == "epilogue":
             await state.set_state(StoryGameStates.viewing_epilogue)
             await callback.message.answer(engine.epilogue_text, reply_markup=story_next_kb())
-
         else:
             nq = data.get("next_qid")
             if nq:
                 await show_question(callback.message, state, nq)
-
     elif cur_state == StoryGameStates.viewing_checkpoint.state:
         nq = data.get("next_qid")
         if nq:
             await show_question(callback.message, state, nq)
-
     elif cur_state == StoryGameStates.viewing_epilogue.state:
         sc = data["scores"]
         ending = engine.determine_ending(sc)
@@ -209,10 +189,9 @@ async def story_next(callback: CallbackQuery, state: FSMContext):
         )
         await state.set_state(StoryGameStates.viewing_ending)
         await callback.message.answer(txt, reply_markup=story_end_kb(), parse_mode="Markdown")
-
     await callback.answer()
 
-# Обработчик выбора варианта
+# Обработчик выбора варианта (без изменений)
 @router.callback_query(StoryGameStates.answering, F.data.startswith("story_opt_"))
 async def story_option(callback: CallbackQuery, state: FSMContext):
     label = callback.data.replace("story_opt_", "")
@@ -272,7 +251,7 @@ async def story_option(callback: CallbackQuery, state: FSMContext):
     )
     await callback.answer()
 
-# Обработчик завершения игры
+# Завершение игры (без изменений)
 @router.callback_query(F.data == "story_end")
 async def story_end(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -305,25 +284,20 @@ async def story_end(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
 
-# ========== НОВЫЕ ОБРАБОТЧИКИ ==========
-
+# Дополнительные обработчики (статы, сохранение, выход, продолжение, новая игра, удаление сохранения)
 @router.callback_query(F.data == "story_show_stats")
 async def show_stats(callback: CallbackQuery, state: FSMContext):
-    """Показывает текущие статы игрока"""
     data = await state.get_data()
     scores = data.get("scores", {})
-    
     if scores:
         text = f"📊 **Текущие баллы:**\n\n{engine.format_scores(scores)}"
     else:
         text = "📊 Статы пока не накоплены."
-    
     await callback.message.answer(text, parse_mode="Markdown")
     await callback.answer()
 
 @router.callback_query(F.data == "story_save")
 async def save_progress(callback: CallbackQuery, state: FSMContext):
-    """Сохраняет текущий прогресс"""
     data = await state.get_data()
     data["state"] = await state.get_state()
     if await save_game_progress(callback.from_user.id, data):
@@ -333,20 +307,16 @@ async def save_progress(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "story_quit")
 async def quit_game(callback: CallbackQuery, state: FSMContext):
-    """Выход из игры с сохранением"""
     data = await state.get_data()
     data["state"] = await state.get_state()
     await save_game_progress(callback.from_user.id, data)
     await state.clear()
-    
     try:
         await callback.message.delete()
     except:
         pass
-    
     await callback.message.answer(
-        "🎮 **Игра сохранена!**\n\n"
-        "Чтобы продолжить, выберите 'Сюжетная игра' в меню.",
+        "🎮 **Игра сохранена!**\n\nЧтобы продолжить, выберите 'Сюжетная игра' в меню.",
         reply_markup=get_main_kb(),
         parse_mode="Markdown"
     )
@@ -354,55 +324,41 @@ async def quit_game(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "story_continue")
 async def continue_game(callback: CallbackQuery, state: FSMContext):
-    """Продолжает сохранённую игру"""
     saved_data = await load_game_progress(callback.from_user.id)
-    
     if not saved_data:
         await callback.answer("❌ Нет сохранённой игры", show_alert=True)
         return
-    
     await state.update_data(saved_data)
-    
     saved_state = saved_data.get("state")
     if saved_state:
         await state.set_state(saved_state)
-    
     qid = saved_data.get("qid")
     current_state = await state.get_state()
-    
     if qid and (current_state == StoryGameStates.answering.state or current_state == StoryGameStates.viewing_result.state):
         await show_question(callback.message, state, qid)
     else:
         await callback.message.answer(
-            "📖 **Продолжаем игру**\n\n"
-            "Нажмите 'Далее', чтобы продолжить с того же места.",
+            "📖 **Продолжаем игру**\n\nНажмите 'Далее', чтобы продолжить с того же места.",
             reply_markup=story_next_kb()
         )
-    
     await callback.answer()
 
 @router.callback_query(F.data == "story_new")
 async def new_game(callback: CallbackQuery, state: FSMContext):
-    """Начинает новую игру (удаляет сохранение)"""
     await delete_game_progress(callback.from_user.id)
     await state.clear()
-    
-    age_group = "teen"
-    user_age = await get_user_age_group(callback.from_user.id)
-    if user_age in ("teen", "student"):
-        age_group = user_age
-    await start_new_story_game(callback, state, age_group)
+    user_age = await get_user_age_group(callback.from_user.id) or "teen"
+    await start_new_story_game(callback, state, user_age)
     await callback.answer()
 
 @router.callback_query(F.data == "story_delete_save")
 async def delete_save(callback: CallbackQuery, state: FSMContext):
-    """Удаляет сохранение"""
     if await delete_game_progress(callback.from_user.id):
         await callback.answer("🗑️ Сохранение удалено", show_alert=True)
     else:
         await callback.answer("❌ Не найдено сохранение", show_alert=True)
 
-# Вспомогательная функция показа вопроса
+# Вспомогательная функция показа вопроса (с кнопками сохранения, выхода, статов)
 async def show_question(msg: Message, state: FSMContext, qid: str):
     data = await state.get_data()
     scores = data.get("scores", dict(engine.initial_scores))
@@ -463,7 +419,7 @@ async def show_question(msg: Message, state: FSMContext, qid: str):
     await state.update_data(qid=qid)
     await state.set_state(StoryGameStates.answering)
 
-    # Создаём клавиатуру с вариантами + кнопками управления
+    # Клавиатура с вариантами + кнопки управления
     builder = InlineKeyboardBuilder()
     for opt in q["options"]:
         builder.add(InlineKeyboardButton(

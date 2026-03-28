@@ -14,7 +14,7 @@ def story_end_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 def story_options_kb(options: list[dict]) -> InlineKeyboardMarkup:
-    """Клавиатура с вариантами ответа для вопроса (без доп. кнопок)"""
+    """Клавиатура с вариантами ответа (без доп. кнопок)"""
     builder = InlineKeyboardBuilder()
     for opt in options:
         builder.add(InlineKeyboardButton(
@@ -40,11 +40,13 @@ def story_game_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 def story_continue_kb() -> InlineKeyboardMarkup:
-    """Клавиатура для продолжения игры"""
+    """Клавиатура для продолжения игры (используется при наличии сохранения)"""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="▶️ Продолжить", callback_data="story_continue"),
-        InlineKeyboardButton(text="🔄 Начать заново", callback_data="story_new"),
-        InlineKeyboardButton(text="🗑️ Удалить сохранение", callback_data="story_delete_save")
+        InlineKeyboardButton(text="🔄 Начать заново", callback_data="story_new")
+    )
+    builder.row(
+        InlineKeyboardButton(text="◀️ Выйти в меню", callback_data="back_main_menu")
     )
     return builder.as_markup()
