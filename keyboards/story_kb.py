@@ -27,7 +27,7 @@ def story_options_kb(options: list[dict]) -> InlineKeyboardMarkup:
 def story_stats_kb() -> InlineKeyboardMarkup:
     """Клавиатура с кнопкой просмотра статов"""
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="📊 Показать статы", callback_data="story_show_stats"))
+    builder.add(InlineKeyboardButton(text="📊 Показать статистику", callback_data="story_show_stats"))
     return builder.as_markup()
 
 def story_game_kb() -> InlineKeyboardMarkup:
