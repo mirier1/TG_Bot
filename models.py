@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Text, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Text, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -16,13 +16,13 @@ class Question(Base):
     __tablename__ = "questions"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(BigInteger)  # ID пользователя задавшего вопрос
-    user_name = Column(String)    # Имя пользователя (для удобства)
-    message_id = Column(BigInteger)  # ID сообщения с вопросом в чате пользователя
-    admin_chat_message_id = Column(BigInteger)  # ID сообщения в админ-чате
-    text = Column(Text)  # Текст вопроса
-    status = Column(String, default='pending')  # pending/answered/rejected
-    answer = Column(Text, nullable=True)  # Ответ админа
+    user_id = Column(BigInteger)
+    user_name = Column(String)
+    message_id = Column(BigInteger)
+    admin_chat_message_id = Column(BigInteger)
+    text = Column(Text)
+    status = Column(String, default='pending')
+    answer = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     answered_at = Column(DateTime, nullable=True)
 
@@ -38,7 +38,6 @@ class QuizResult(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
     
-    # Обновляем уникальный индекс
     __table_args__ = (
         UniqueConstraint('user_id', 'sdg_id', 'difficulty', 'age_group', 
                        name='uq_user_sdg_diff_age'),
@@ -51,10 +50,10 @@ class GameResult(Base):
     user_id = Column(BigInteger)
     game_type = Column(String)  # 'waste', 'habits', 'rightwrong', 'story'
     age_group = Column(String)  # 'young', 'teen', 'student'
-    difficulty = Column(String, nullable=True)  # Если в играх будет сложность
-    score = Column(Integer)  # Общий счет
-    max_score = Column(Integer)  # Максимально возможный
-    steps_completed = Column(Integer)  # Сколько шагов пройдено
+    difficulty = Column(String, nullable=True)
+    score = Column(Integer)
+    max_score = Column(Integer)
+    steps_completed = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
     
@@ -67,13 +66,13 @@ class AmbassadorApplication(Base):
     
     id = Column(Integer, primary_key=True)
     user_id = Column(BigInteger)
-    full_name = Column(String)  # Имя
-    age = Column(Integer)       # Возраст
-    institution = Column(String) # Школа/вуз
-    city = Column(String)       # Город
-    contact = Column(String)    # Телефон/Telegram
-    role = Column(String)       # Роль: ambassador, lecturer, eco
-    status = Column(String, default='pending')  # pending/approved/rejected
+    full_name = Column(String)
+    age = Column(Integer)
+    institution = Column(String)
+    city = Column(String)
+    contact = Column(String)
+    role = Column(String)
+    status = Column(String, default='pending')
     created_at = Column(DateTime, default=datetime.utcnow)
     reviewed_at = Column(DateTime, nullable=True)
 
@@ -82,8 +81,23 @@ class Feedback(Base):
     
     id = Column(Integer, primary_key=True)
     user_id = Column(BigInteger)
-    sdg_id = Column(Integer)
-    usefulness = Column(Integer)   # 1-5
-    interest = Column(Integer)     # 1-5
-    clarity = Column(Integer)      # 1-5
+    sdg_id = Column(Integer, nullable=True)
+    usefulness = Column(Integer)
+    interest = Column(Integer)
+    clarity = Column(Integer)
+    comment = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+# Новая модель для сохранений сюжетной игры
+class StorySave(Base):
+    __tablename__ = "story_saves"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    save_data = Column(Text)  # JSON с данными сохранения
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        UniqueConstraint('user_id', name='uq_user_story_save'),
+    )
