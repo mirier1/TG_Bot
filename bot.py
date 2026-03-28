@@ -33,7 +33,7 @@ async def main():
     dp.include_router(games_router)
     dp.include_router(ambassador_router)
     dp.include_router(feedback_router)
-    
+
     # 3. Запускаем бота
     print("🤖 Бот запущен!")
     await dp.start_polling(bot)

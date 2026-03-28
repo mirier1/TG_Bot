@@ -180,9 +180,27 @@ async def show_question(callback: CallbackQuery, state: FSMContext):
         ))
     builder.adjust(1)
     
+    # Добавляем перенос строки для длинных вопросов
+    question_text = question["question"]
+    # Разбиваем длинные строки по 60 символов
+    if len(question_text) > 60:
+        # Разбиваем по словам
+        words = question_text.split()
+        lines = []
+        current_line = ""
+        for word in words:
+            if len(current_line) + len(word) + 1 <= 60:
+                current_line += " " + word if current_line else word
+            else:
+                lines.append(current_line)
+                current_line = word
+        if current_line:
+            lines.append(current_line)
+        question_text = "\n".join(lines)
+    
     await callback.message.edit_text(
         f"❓ Вопрос {question_index + 1}/{len(data['questions'])}:\n\n"
-        f"{question['question']}",
+        f"{question_text}",
         reply_markup=builder.as_markup()
     )
     

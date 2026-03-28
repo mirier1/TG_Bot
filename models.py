@@ -82,9 +82,8 @@ class Feedback(Base):
     
     id = Column(Integer, primary_key=True)
     user_id = Column(BigInteger)
-    sdg_id = Column(Integer, nullable=True)  # Для какой ЦУР
-    usefulness = Column(Integer)  # 1-5
-    interest = Column(Integer)    # 1-5
-    clarity = Column(Integer)     # 1-5
-    comment = Column(Text, nullable=True)
+    sdg_id = Column(Integer)
+    usefulness = Column(Integer)   # 1-5
+    interest = Column(Integer)     # 1-5
+    clarity = Column(Integer)      # 1-5
     created_at = Column(DateTime, default=datetime.utcnow)

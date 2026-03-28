@@ -1,125 +1,103 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ParseMode
 
 from database import AsyncSessionLocal
 from models import Feedback
 from handlers.states.feedback_states import FeedbackStates
-from keyboards.feedback_kb import get_rating_kb, get_comment_kb
-from keyboards.main_menu_kb import get_main_kb
+from keyboards.feedback_kb import get_feedback_kb
+from utils.constants import SDG_TITLES
 
 router = Router()
 
-# Запуск обратной связи (вызывается из главного меню или после квиза)
-@router.callback_query(F.data == "menu_feedback")
+# Временное хранилище для выбранных оценок
+user_ratings = {}  # user_id -> {"usefulness": x, "interest": y, "clarity": z}
+
+@router.callback_query(F.data.startswith("rate_"))
 async def start_feedback(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(FeedbackStates.usefulness)
+    """Запуск формы обратной связи"""
+    sdg_num = int(callback.data.split("_")[1])
+    sdg_title = SDG_TITLES.get(sdg_num, f"ЦУР {sdg_num}")
+    
+    # Сохраняем sdg_id
+    await state.update_data(sdg_id=sdg_num)
+    user_ratings[callback.from_user.id] = {}
+    
     await callback.message.answer(
-        "📊 **Обратная связь**\n\n"
-        "Помогите нам стать лучше! Оцените по шкале 1-5:\n\n"
-        "1️⃣ Оцените **полезность** материала:",
-        reply_markup=get_rating_kb("usefulness"),
+        f"📊 **Обратная связь**\n\n"
+        f"Оцените лекцию по ЦУР {sdg_num}:\n"
+        f"_{sdg_title[:50]}..._\n\n"
+        f"Выберите оценки 1-5:",
+        reply_markup=get_feedback_kb(),
         parse_mode=ParseMode.MARKDOWN
     )
+    
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
+    await state.set_state(FeedbackStates.waiting_feedback)
     await callback.answer()
 
-# Обработка оценки полезности
 @router.callback_query(F.data.startswith("usefulness_"))
-async def process_usefulness(callback: CallbackQuery, state: FSMContext):
+async def set_usefulness(callback: CallbackQuery):
     rating = int(callback.data.split("_")[1])
-    await state.update_data(usefulness=rating)
-    await state.set_state(FeedbackStates.interest)
-    
-    await callback.message.edit_text(
-        "📊 **Обратная связь**\n\n"
-        "2️⃣ Оцените **интересность** материала:",
-        reply_markup=get_rating_kb("interest"),
-        parse_mode=ParseMode.MARKDOWN
-    )
-    await callback.answer()
+    user_ratings[callback.from_user.id]["usefulness"] = rating
+    await callback.answer(f"✅ Полезность: {rating}")
 
-# Обработка оценки интереса
 @router.callback_query(F.data.startswith("interest_"))
-async def process_interest(callback: CallbackQuery, state: FSMContext):
+async def set_interest(callback: CallbackQuery):
     rating = int(callback.data.split("_")[1])
-    await state.update_data(interest=rating)
-    await state.set_state(FeedbackStates.clarity)
-    
-    await callback.message.edit_text(
-        "📊 **Обратная связь**\n\n"
-        "3️⃣ Оцените **понятность** материала:",
-        reply_markup=get_rating_kb("clarity"),
-        parse_mode=ParseMode.MARKDOWN
-    )
-    await callback.answer()
+    user_ratings[callback.from_user.id]["interest"] = rating
+    await callback.answer(f"✅ Интерес: {rating}")
 
-# Обработка оценки понятности
 @router.callback_query(F.data.startswith("clarity_"))
-async def process_clarity(callback: CallbackQuery, state: FSMContext):
+async def set_clarity(callback: CallbackQuery):
     rating = int(callback.data.split("_")[1])
-    await state.update_data(clarity=rating)
-    await state.set_state(FeedbackStates.comment)
+    user_ratings[callback.from_user.id]["clarity"] = rating
+    await callback.answer(f"✅ Понятность: {rating}")
+
+@router.callback_query(F.data == "submit_feedback")
+async def submit_feedback(callback: CallbackQuery, state: FSMContext):
+    """Сохранение обратной связи"""
+    ratings = user_ratings.get(callback.from_user.id, {})
     
-    await callback.message.edit_text(
-        "📊 **Обратная связь**\n\n"
-        "Хотите оставить комментарий?",
-        reply_markup=get_comment_kb(),
-        parse_mode=ParseMode.MARKDOWN
-    )
-    await callback.answer()
-
-# Обработка комментария
-@router.callback_query(F.data == "feedback_comment")
-async def ask_comment(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_text(
-        "📝 Напишите ваш комментарий (или /skip чтобы пропустить):",
-        parse_mode=ParseMode.MARKDOWN
-    )
-    await callback.answer()
-
-@router.message(FeedbackStates.comment)
-async def process_comment(message: Message, state: FSMContext):
-    if message.text == "/skip":
-        await save_feedback(message, state, comment=None)
-    else:
-        await save_feedback(message, state, comment=message.text)
-
-# Пропуск комментария
-@router.callback_query(F.data == "feedback_skip")
-async def skip_comment(callback: CallbackQuery, state: FSMContext):
-    await save_feedback(callback, state, comment=None)
-    await callback.answer()
-
-# Сохранение и завершение
-async def save_feedback(update, state: FSMContext, comment=None):
+    usefulness = ratings.get("usefulness")
+    interest = ratings.get("interest")
+    clarity = ratings.get("clarity")
+    
+    if None in (usefulness, interest, clarity):
+        await callback.answer("❌ Оцените все три критерия!", show_alert=True)
+        return
+    
     data = await state.get_data()
+    sdg_id = data.get("sdg_id")
     
     async with AsyncSessionLocal() as session:
         feedback = Feedback(
-            user_id=update.from_user.id,
-            sdg_id=None,  # Пока без привязки к ЦУР
-            usefulness=data["usefulness"],
-            interest=data["interest"],
-            clarity=data["clarity"],
-            comment=comment
+            user_id=callback.from_user.id,
+            sdg_id=sdg_id,
+            usefulness=usefulness,
+            interest=interest,
+            clarity=clarity
         )
         session.add(feedback)
         await session.commit()
     
-    if isinstance(update, Message):
-        await update.answer(
-            "✅ **Спасибо за обратную связь!**\n\n"
-            "Ваше мнение помогает нам становиться лучше!",
-            reply_markup=get_main_kb(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-    else:
-        await update.message.edit_text(
-            "✅ **Спасибо за обратную связь!**\n\n"
-            "Ваше мнение помогает нам становиться лучше!",
-            reply_markup=get_main_kb(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-    
+    # Очистка
+    if callback.from_user.id in user_ratings:
+        del user_ratings[callback.from_user.id]
     await state.clear()
+    
+    await callback.message.edit_text(
+        "✅ **Спасибо за обратную связь!**\n\n"
+        "Ваши оценки помогут нам улучшить материалы.",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "noop")
+async def noop(callback: CallbackQuery):
+    await callback.answer()
