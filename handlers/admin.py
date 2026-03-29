@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import Command, CommandObject
 from database import AsyncSessionLocal
-from models import Question
+from models import Question, User, GameResult, QuizResult, Feedback, AmbassadorApplication
 from config import ADMIN_IDS
 from sqlalchemy import select
 from datetime import datetime
@@ -99,3 +99,119 @@ async def export_feedback(message: Message):
     # Отправка файла
     file = BufferedInputFile(output.getvalue().encode('utf-8'), filename="feedback.csv")
     await message.answer_document(file, caption="📊 Выгрузка обратной связи")
+
+#ПРИНЯТИЕ ЗАЯВКИ ПОСЛАННИКА
+@router.message(Command("approve"), F.func(is_admin))
+async def approve_ambassador(message: Message, command: CommandObject, bot):
+    """Принятие заявки посланника. Формат: /approve <ID_заявки>"""
+    if not command.args:
+        await message.reply("❌ Формат: /approve <ID_заявки>")
+        return
+    
+    try:
+        application_id = int(command.args.strip())
+    except ValueError:
+        await message.reply("❌ Неверный формат ID заявки")
+        return
+    
+    async with AsyncSessionLocal() as session:
+        stmt = select(AmbassadorApplication).where(AmbassadorApplication.id == application_id)
+        result = await session.execute(stmt)
+        application = result.scalar_one_or_none()
+        
+        if not application:
+            await message.reply(f"❌ Заявка #{application_id} не найдена")
+            return
+        
+        if application.status != 'pending':
+            await message.reply(f"⚠️ Заявка #{application_id} уже обработана (статус: {application.status})")
+            return
+        
+        # Обновляем статус
+        application.status = 'approved'
+        application.reviewed_at = datetime.utcnow()
+        await session.commit()
+        
+        # Отправляем уведомление пользователю
+        try:
+            await bot.send_message(
+                application.user_id,
+                f"🎉 **Поздравляем! Ваша заявка на статус посланника ЦУР одобрена!**\n\n"
+                f"Вы выбрали роль: *{application.role}*\n\n"
+                f"Мы свяжемся с вами для дальнейших инструкций.\n"
+                f"Спасибо за ваше желание изменить мир к лучшему! 🌍",
+                parse_mode="Markdown"
+            )
+            await message.reply(f"✅ Заявка #{application_id} одобрена. Пользователь уведомлён.")
+        except Exception as e:
+            await message.reply(f"⚠️ Заявка одобрена, но не удалось уведомить пользователя: {str(e)}")
+
+#ОТКЛОНЕНИЕ ЗАЯВКИ ПОСЛАННИКА
+@router.message(Command("reject"), F.func(is_admin))
+async def reject_ambassador(message: Message, command: CommandObject, bot):
+    """Отклонение заявки посланника. Формат: /reject <ID_заявки> [причина]"""
+    if not command.args:
+        await message.reply("❌ Формат: /reject <ID_заявки> [причина]")
+        return
+    
+    parts = command.args.split(' ', 1)
+    try:
+        application_id = int(parts[0])
+        reason = parts[1] if len(parts) > 1 else "Не указана"
+    except ValueError:
+        await message.reply("❌ Неверный формат ID заявки")
+        return
+    
+    async with AsyncSessionLocal() as session:
+        stmt = select(AmbassadorApplication).where(AmbassadorApplication.id == application_id)
+        result = await session.execute(stmt)
+        application = result.scalar_one_or_none()
+        
+        if not application:
+            await message.reply(f"❌ Заявка #{application_id} не найдена")
+            return
+        
+        if application.status != 'pending':
+            await message.reply(f"⚠️ Заявка #{application_id} уже обработана")
+            return
+        
+        application.status = 'rejected'
+        application.reviewed_at = datetime.utcnow()
+        await session.commit()
+        
+        # Отправляем уведомление пользователю
+        try:
+            await bot.send_message(
+                application.user_id,
+                f"📩 **Ваша заявка на статус посланника ЦУР**\n\n"
+                f"К сожалению, ваша заявка была отклонена.\n"
+                f"Причина: *{reason}*\n\n"
+                f"Вы можете попробовать подать заявку снова позже.",
+                parse_mode="Markdown"
+            )
+            await message.reply(f"✅ Заявка #{application_id} отклонена. Пользователь уведомлён.")
+        except Exception as e:
+            await message.reply(f"⚠️ Заявка отклонена, но не удалось уведомить пользователя: {str(e)}")
+
+# ---------- ПРОСМОТР ЗАЯВОК ----------
+@router.message(Command("applications"), F.func(is_admin))
+async def list_applications(message: Message):
+    """Просмотр всех заявок посланников"""
+    async with AsyncSessionLocal() as session:
+        stmt = select(AmbassadorApplication).order_by(AmbassadorApplication.created_at.desc()).limit(10)
+        result = await session.execute(stmt)
+        apps = result.scalars().all()
+    
+    if not apps:
+        await message.answer("📭 Нет заявок.")
+        return
+    
+    text = "📋 **Последние заявки посланников:**\n\n"
+    for app in apps:
+        status_emoji = "⏳" if app.status == "pending" else "✅" if app.status == "approved" else "❌"
+        text += f"{status_emoji} **#{app.id}** | {app.full_name} | {app.role}\n"
+        text += f"   Статус: {app.status}\n\n"
+    
+    text += "Для одобрения: `/approve <ID>`\nДля отклонения: `/reject <ID> [причина]`"
+    
+    await message.answer(text, parse_mode="Markdown")
