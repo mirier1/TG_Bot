@@ -161,7 +161,7 @@ async def export_questions(message: Message):
         caption="❓ Выгрузка вопросов эксперту"
     )
 
-# --------- ВЫГРУЗКА ЗАЯВОК ПОСЛАННИКОВ ---------
+# ---------- ВЫГРУЗКА ЗАЯВОК ПОСЛАННИКОВ ----------
 @router.message(Command("export_ambassadors"), F.func(is_admin))
 async def export_ambassadors(message: Message):
     async with AsyncSessionLocal() as session:
