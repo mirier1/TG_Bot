@@ -90,14 +90,14 @@ async def export_feedback(message: Message):
     from aiogram.types import BufferedInputFile
     
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = csv.writer(output, delimiter=';')
     writer.writerow(["id", "user_id", "sdg_id", "usefulness", "interest", "clarity", "created_at"])
     
     for f in feedbacks:
         writer.writerow([f.id, f.user_id, f.sdg_id, f.usefulness, f.interest, f.clarity, f.created_at])
     
     # Отправка файла
-    file = BufferedInputFile(output.getvalue().encode('utf-8'), filename="feedback.csv")
+    file = BufferedInputFile(output.getvalue().encode('utf-8-sig'), filename="feedback.csv")
     await message.answer_document(file, caption="📊 Выгрузка обратной связи")
 
 #ПРИНЯТИЕ ЗАЯВКИ ПОСЛАННИКА
