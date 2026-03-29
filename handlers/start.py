@@ -31,7 +31,7 @@ async def command_start(message: Message):
         else:
             # Всё есть, показываем главное меню
             await message.answer(
-                f"✅ Добро пожаловать, {user.username or 'пользователь'}!\n\n"
+                f"✅ Добро пожаловать, {message.from_user.first_name or 'пользователь'}!\n\n"
                 "Выберите раздел:",
                 reply_markup=get_main_kb()
             )

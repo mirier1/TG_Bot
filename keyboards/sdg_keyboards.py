@@ -29,3 +29,9 @@ def get_sdg_detail_kb(sdg_num: int):
         [InlineKeyboardButton(text="📊 Оценить лекцию", callback_data=f"rate_{sdg_num}")],
         [InlineKeyboardButton(text="◀️ Назад к списку", callback_data="back_to_sdg_list")]
     ])
+
+def get_sdg_back_kb(sdg_num: int):
+    """Клавиатура только с кнопкой 'Вернуться к лекции' (без квиза)"""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Вернуться к лекции", callback_data=f"back_to_sdg_{sdg_num}")]
+    ])

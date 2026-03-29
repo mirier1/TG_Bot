@@ -117,6 +117,7 @@ async def stats_sdg(message: Message):
 @router.message(Command("export_feedback"), F.func(is_admin))
 async def export_feedback(message: Message):
     async with AsyncSessionLocal() as session:
+        from sqlalchemy import select
         stmt = select(Feedback).order_by(Feedback.created_at.desc())
         result = await session.execute(stmt)
         feedbacks = result.scalars().all()

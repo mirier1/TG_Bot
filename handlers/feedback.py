@@ -8,7 +8,7 @@ from aiogram import Bot
 from database import AsyncSessionLocal
 from models import Feedback
 from utils.constants import SDG_TITLES
-from keyboards.sdg_keyboards import get_sdg_detail_kb
+from keyboards.sdg_keyboards import get_sdg_back_kb
 
 router = Router()
 
@@ -31,7 +31,7 @@ async def start_feedback(callback: CallbackQuery, state: FSMContext):
     
     # Отправляем первый опрос
     msg = await callback.message.answer_poll(
-        question=f"📊 Оцените **полезность** лекции по ЦУР {sdg_num}:",
+        question=f"📊 Оцените полезность лекции по ЦУР {sdg_num}:",
         options=["5 - Отлично", "4 - Хорошо", "3 - Средне", "2 - Плохо", "1 - Ужасно"],
         is_anonymous=False,
         allows_multiple_answers=False
@@ -73,7 +73,7 @@ async def handle_poll(poll_answer: PollAnswer, state: FSMContext, bot: Bot):
         # Второй опрос
         msg = await bot.send_poll(
             user_id,
-            question="📊 Оцените **интересность** лекции:",
+            question="📊 Оцените интересность лекции:",
             options=["5 - Отлично", "4 - Хорошо", "3 - Средне", "2 - Плохо", "1 - Ужасно"],
             is_anonymous=False,
             allows_multiple_answers=False
@@ -89,7 +89,7 @@ async def handle_poll(poll_answer: PollAnswer, state: FSMContext, bot: Bot):
         # Третий опрос
         msg = await bot.send_poll(
             user_id,
-            question="📊 Оцените **понятность** лекции:",
+            question="📊 Оцените понятность лекции:",
             options=["5 - Отлично", "4 - Хорошо", "3 - Средне", "2 - Плохо", "1 - Ужасно"],
             is_anonymous=False,
             allows_multiple_answers=False
@@ -121,9 +121,8 @@ async def handle_poll(poll_answer: PollAnswer, state: FSMContext, bot: Bot):
         await bot.send_message(
             user_id,
             f"✅ **Спасибо за обратную связь!**\n\n"
-            f"Ваши оценки по ЦУР {sdg_id} сохранены.\n\n"
-            f"Вернуться к лекции:",
-            reply_markup=get_sdg_detail_kb(sdg_id),
+            f"Ваши оценки по ЦУР {sdg_id} сохранены.",
+            reply_markup=get_sdg_back_kb(sdg_id),  # ← новая кнопка
             parse_mode=ParseMode.MARKDOWN
         )
         
