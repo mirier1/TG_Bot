@@ -31,7 +31,7 @@ async def start_feedback(callback: CallbackQuery, state: FSMContext):
     
     # Отправляем первый опрос
     msg = await callback.message.answer_poll(
-        question=f"📊 Оцените **полезность** лекции по ЦУР {sdg_num}:",
+        question=f"📊 Оцените полезность лекции по ЦУР {sdg_num}:",
         options=["5 - Отлично", "4 - Хорошо", "3 - Средне", "2 - Плохо", "1 - Ужасно"],
         is_anonymous=False,
         allows_multiple_answers=False
@@ -73,7 +73,7 @@ async def handle_poll(poll_answer: PollAnswer, state: FSMContext, bot: Bot):
         # Второй опрос
         msg = await bot.send_poll(
             user_id,
-            question="📊 Оцените **интересность** лекции:",
+            question="📊 Оцените интересность лекции:",
             options=["5 - Отлично", "4 - Хорошо", "3 - Средне", "2 - Плохо", "1 - Ужасно"],
             is_anonymous=False,
             allows_multiple_answers=False
@@ -89,7 +89,7 @@ async def handle_poll(poll_answer: PollAnswer, state: FSMContext, bot: Bot):
         # Третий опрос
         msg = await bot.send_poll(
             user_id,
-            question="📊 Оцените **понятность** лекции:",
+            question="📊 Оцените понятность лекции:",
             options=["5 - Отлично", "4 - Хорошо", "3 - Средне", "2 - Плохо", "1 - Ужасно"],
             is_anonymous=False,
             allows_multiple_answers=False
