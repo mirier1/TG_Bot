@@ -16,11 +16,7 @@ def get_main_kb():
     
     builder.row(
         InlineKeyboardButton(text="🎥 Конкурс «Я есть ЦУР»", callback_data="menu_contest"),
-        InlineKeyboardButton(text="📊 Обратная связь", callback_data="menu_feedback"),
-    )
-    
-    builder.row(
         InlineKeyboardButton(text="⚙️ Настройки профиля", callback_data="menu_settings"),
-    )
+    )   
     
     return builder.as_markup()

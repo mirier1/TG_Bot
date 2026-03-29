@@ -174,34 +174,22 @@ async def show_question(callback: CallbackQuery, state: FSMContext):
     
     builder = InlineKeyboardBuilder()
     for i, option in enumerate(question["options"]):
+        # Разбиваем длинные варианты
+        option_text = option
+        if len(option_text) > 40:
+            # Переносим длинные варианты
+            option_text = option_text[:37] + "..."
         builder.add(InlineKeyboardButton(
-            text=option,
+            text=option_text,
             callback_data=f"answer_{i}"
         ))
     builder.adjust(1)
     
-    # Добавляем перенос строки для длинных вопросов
-    question_text = question["question"]
-    # Разбиваем длинные строки по 60 символов
-    if len(question_text) > 60:
-        # Разбиваем по словам
-        words = question_text.split()
-        lines = []
-        current_line = ""
-        for word in words:
-            if len(current_line) + len(word) + 1 <= 60:
-                current_line += " " + word if current_line else word
-            else:
-                lines.append(current_line)
-                current_line = word
-        if current_line:
-            lines.append(current_line)
-        question_text = "\n".join(lines)
-    
     await callback.message.edit_text(
         f"❓ Вопрос {question_index + 1}/{len(data['questions'])}:\n\n"
-        f"{question_text}",
-        reply_markup=builder.as_markup()
+        f"{question['question']}",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
     )
     
     await state.set_state(QuizStates.waiting_answer)
