@@ -1,8 +1,8 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from keyboards.sdg_keyboards import get_sdg_list_kb, get_sdg_detail_kb
 from keyboards.main_menu_kb import get_main_kb
 from utils.constants import SDG_TITLES
+from keyboards.sdg_keyboards import get_sdg_list_kb, get_sdg_detail_kb, get_sdg_back_kb
 
 router = Router()
 
@@ -58,7 +58,15 @@ async def back_to_lecture(callback: CallbackQuery):
     """Возврат к лекции с полным меню"""
     sdg_num = int(callback.data.split("_")[3])
     
-    # Показываем лекцию со всеми кнопками
-    from handlers.sdg import show_sdg_detail
-    await show_sdg_detail(callback)
+    # Получаем название ЦУР
+    title = SDG_TITLES.get(sdg_num)
+    
+    # Показываем лекцию со всеми кнопками (как в show_sdg_detail)
+    await callback.message.edit_text(
+        f"🎯 **Цель {sdg_num}: {title}**\n\n"
+        f"*Описание:* В разработке\n"
+        f"*Для вашего возраста:* контент скоро появится",
+        parse_mode="Markdown",
+        reply_markup=get_sdg_detail_kb(sdg_num)
+    )
     await callback.answer()
