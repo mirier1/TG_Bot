@@ -432,7 +432,7 @@ async def show_question(msg: Message, state: FSMContext, qid: str):
         InlineKeyboardButton(text="🚪 Выйти", callback_data="story_quit")
     )
     builder.row(
-        InlineKeyboardButton(text="📊 Статы", callback_data="story_show_stats")
+        InlineKeyboardButton(text="📊 Статистика", callback_data="story_show_stats")
     )
 
     await msg.answer(display, reply_markup=builder.as_markup(), parse_mode="Markdown")
