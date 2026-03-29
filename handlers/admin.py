@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import Command, CommandObject
 from database import AsyncSessionLocal
-from models import Question
+from models import Question, User, GameResult, QuizResult, Feedback, AmbassadorApplication
 from config import ADMIN_IDS
 from sqlalchemy import select
 from datetime import datetime
@@ -99,42 +99,106 @@ async def export_feedback(message: Message):
     # Отправка файла
     file = BufferedInputFile(output.getvalue().encode('utf-8'), filename="feedback.csv")
     await message.answer_document(file, caption="📊 Выгрузка обратной связи")
-        writer.writerow([f.id, f.user_id, f.sdg_id, f.usefulness, f.interest, f.clarity, f.comment, f.created_at])
-    
-    await message.answer_document(
-        BufferedInputFile(output.getvalue().encode('utf-8'), filename="feedback.csv"),
-        caption="📊 Выгрузка обратной связи"
-    )
 
-# ---------- ВЫГРУЗКА ВОПРОСОВ ЭКСПЕРТУ ----------
-@router.message(Command("export_questions"), F.func(is_admin))
-async def export_questions(message: Message):
-    async with AsyncSessionLocal() as session:
-        stmt = select(Question).order_by(Question.created_at.desc())
-        result = await session.execute(stmt)
-        questions = result.scalars().all()
-    
-    if not questions:
-        await message.answer("📭 Нет вопросов.")
+#ПРИНЯТИЕ ЗАЯВКИ ПОСЛАННИКА
+@router.message(Command("approve"), F.func(is_admin))
+async def approve_ambassador(message: Message, command: CommandObject, bot):
+    """Принятие заявки посланника. Формат: /approve <ID_заявки>"""
+    if not command.args:
+        await message.reply("❌ Формат: /approve <ID_заявки>")
         return
     
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["id", "user_id", "user_name", "text", "status", "answer", "created_at", "answered_at"])
+    try:
+        application_id = int(command.args.strip())
+    except ValueError:
+        await message.reply("❌ Неверный формат ID заявки")
+        return
     
-    for q in questions:
-        writer.writerow([q.id, q.user_id, q.user_name, q.text, q.status, q.answer, q.created_at, q.answered_at])
-    
-    await message.answer_document(
-        BufferedInputFile(output.getvalue().encode('utf-8'), filename="questions.csv"),
-        caption="❓ Выгрузка вопросов эксперту"
-    )
-
-# ---------- ВЫГРУЗКА ЗАЯВОК ПОСЛАННИКОВ ----------
-@router.message(Command("export_ambassadors"), F.func(is_admin))
-async def export_ambassadors(message: Message):
     async with AsyncSessionLocal() as session:
-        stmt = select(AmbassadorApplication).order_by(AmbassadorApplication.created_at.desc())
+        stmt = select(AmbassadorApplication).where(AmbassadorApplication.id == application_id)
+        result = await session.execute(stmt)
+        application = result.scalar_one_or_none()
+        
+        if not application:
+            await message.reply(f"❌ Заявка #{application_id} не найдена")
+            return
+        
+        if application.status != 'pending':
+            await message.reply(f"⚠️ Заявка #{application_id} уже обработана (статус: {application.status})")
+            return
+        
+        # Обновляем статус
+        application.status = 'approved'
+        application.reviewed_at = datetime.utcnow()
+        await session.commit()
+        
+        # Отправляем уведомление пользователю
+        try:
+            await bot.send_message(
+                application.user_id,
+                f"🎉 **Поздравляем! Ваша заявка на статус посланника ЦУР одобрена!**\n\n"
+                f"Вы выбрали роль: *{application.role}*\n\n"
+                f"Мы свяжемся с вами для дальнейших инструкций.\n"
+                f"Спасибо за ваше желание изменить мир к лучшему! 🌍",
+                parse_mode="Markdown"
+            )
+            await message.reply(f"✅ Заявка #{application_id} одобрена. Пользователь уведомлён.")
+        except Exception as e:
+            await message.reply(f"⚠️ Заявка одобрена, но не удалось уведомить пользователя: {str(e)}")
+
+#ОТКЛОНЕНИЕ ЗАЯВКИ ПОСЛАННИКА
+@router.message(Command("reject"), F.func(is_admin))
+async def reject_ambassador(message: Message, command: CommandObject, bot):
+    """Отклонение заявки посланника. Формат: /reject <ID_заявки> [причина]"""
+    if not command.args:
+        await message.reply("❌ Формат: /reject <ID_заявки> [причина]")
+        return
+    
+    parts = command.args.split(' ', 1)
+    try:
+        application_id = int(parts[0])
+        reason = parts[1] if len(parts) > 1 else "Не указана"
+    except ValueError:
+        await message.reply("❌ Неверный формат ID заявки")
+        return
+    
+    async with AsyncSessionLocal() as session:
+        stmt = select(AmbassadorApplication).where(AmbassadorApplication.id == application_id)
+        result = await session.execute(stmt)
+        application = result.scalar_one_or_none()
+        
+        if not application:
+            await message.reply(f"❌ Заявка #{application_id} не найдена")
+            return
+        
+        if application.status != 'pending':
+            await message.reply(f"⚠️ Заявка #{application_id} уже обработана")
+            return
+        
+        application.status = 'rejected'
+        application.reviewed_at = datetime.utcnow()
+        await session.commit()
+        
+        # Отправляем уведомление пользователю
+        try:
+            await bot.send_message(
+                application.user_id,
+                f"📩 **Ваша заявка на статус посланника ЦУР**\n\n"
+                f"К сожалению, ваша заявка была отклонена.\n"
+                f"Причина: *{reason}*\n\n"
+                f"Вы можете попробовать подать заявку снова позже.",
+                parse_mode="Markdown"
+            )
+            await message.reply(f"✅ Заявка #{application_id} отклонена. Пользователь уведомлён.")
+        except Exception as e:
+            await message.reply(f"⚠️ Заявка отклонена, но не удалось уведомить пользователя: {str(e)}")
+
+# ---------- ПРОСМОТР ЗАЯВОК ----------
+@router.message(Command("applications"), F.func(is_admin))
+async def list_applications(message: Message):
+    """Просмотр всех заявок посланников"""
+    async with AsyncSessionLocal() as session:
+        stmt = select(AmbassadorApplication).order_by(AmbassadorApplication.created_at.desc()).limit(10)
         result = await session.execute(stmt)
         apps = result.scalars().all()
     
@@ -142,36 +206,12 @@ async def export_ambassadors(message: Message):
         await message.answer("📭 Нет заявок.")
         return
     
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["id", "user_id", "full_name", "age", "institution", "city", "contact", "role", "status", "created_at", "reviewed_at"])
+    text = "📋 **Последние заявки посланников:**\n\n"
+    for app in apps:
+        status_emoji = "⏳" if app.status == "pending" else "✅" if app.status == "approved" else "❌"
+        text += f"{status_emoji} **#{app.id}** | {app.full_name} | {app.role}\n"
+        text += f"   Статус: {app.status}\n\n"
     
-    for a in apps:
-        writer.writerow([a.id, a.user_id, a.full_name, a.age, a.institution, a.city, a.contact, a.role, a.status, a.created_at, a.reviewed_at])
+    text += "Для одобрения: `/approve <ID>`\nДля отклонения: `/reject <ID> [причина]`"
     
-    await message.answer_document(
-        BufferedInputFile(output.getvalue().encode('utf-8'), filename="ambassadors.csv"),
-        caption="🎓 Выгрузка заявок посланников"
-    )
-
-# ---------- ОБЩАЯ СВОДКА ----------
-@router.message(Command("stats_all"), F.func(is_admin))
-async def stats_all(message: Message):
-    async with AsyncSessionLocal() as session:
-        total_users = await session.scalar(select(func.count()).select_from(User))
-        total_games = await session.scalar(select(func.count()).select_from(GameResult))
-        total_quizzes = await session.scalar(select(func.count()).select_from(QuizResult))
-        total_feedback = await session.scalar(select(func.count()).select_from(Feedback))
-        total_questions = await session.scalar(select(func.count()).select_from(Question))
-        total_ambassadors = await session.scalar(select(func.count()).select_from(AmbassadorApplication))
-        
-        text = (
-            f"📊 **Общая статистика бота**\n\n"
-            f"👥 Пользователей: {total_users}\n"
-            f"🎮 Прохождений игр: {total_games}\n"
-            f"📚 Прохождений квизов: {total_quizzes}\n"
-            f"💬 Отзывов: {total_feedback}\n"
-            f"❓ Вопросов эксперту: {total_questions}\n"
-            f"📝 Заявок посланников: {total_ambassadors}\n"
-        )
-        await message.answer(text, parse_mode="Markdown")
+    await message.answer(text, parse_mode="Markdown")
