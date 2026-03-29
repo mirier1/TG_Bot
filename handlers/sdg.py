@@ -52,3 +52,13 @@ async def back_to_main_menu_handler(callback: CallbackQuery):
         reply_markup=get_main_kb()
     )
     await callback.answer()
+
+@router.callback_query(F.data.startswith("back_to_sdg_"))
+async def back_to_lecture(callback: CallbackQuery):
+    """Возврат к лекции с полным меню"""
+    sdg_num = int(callback.data.split("_")[3])
+    
+    # Показываем лекцию со всеми кнопками
+    from handlers.sdg import show_sdg_detail
+    await show_sdg_detail(callback)
+    await callback.answer()

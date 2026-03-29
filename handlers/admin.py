@@ -70,11 +70,13 @@ async def reply_to_question(message: Message, command: CommandObject, bot):
 
 @router.message(Command("export_feedback"))
 async def export_feedback(message: Message):
+    # Проверка админа
     if message.from_user.id not in ADMIN_IDS:
         await message.answer("❌ Недостаточно прав")
         return
     
     async with AsyncSessionLocal() as session:
+        from sqlalchemy import select
         stmt = select(Feedback).order_by(Feedback.created_at.desc())
         result = await session.execute(stmt)
         feedbacks = result.scalars().all()
@@ -94,7 +96,6 @@ async def export_feedback(message: Message):
     for f in feedbacks:
         writer.writerow([f.id, f.user_id, f.sdg_id, f.usefulness, f.interest, f.clarity, f.created_at])
     
-    await message.answer_document(
-        BufferedInputFile(output.getvalue().encode('utf-8'), filename="feedback.csv"),
-        caption="📊 Выгрузка обратной связи"
-    )
+    # Отправка файла
+    file = BufferedInputFile(output.getvalue().encode('utf-8'), filename="feedback.csv")
+    await message.answer_document(file, caption="📊 Выгрузка обратной связи")

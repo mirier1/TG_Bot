@@ -8,7 +8,7 @@ from aiogram import Bot
 from database import AsyncSessionLocal
 from models import Feedback
 from utils.constants import SDG_TITLES
-from keyboards.sdg_keyboards import get_sdg_detail_kb
+from keyboards.sdg_keyboards import get_sdg_back_kb
 
 router = Router()
 
@@ -121,9 +121,8 @@ async def handle_poll(poll_answer: PollAnswer, state: FSMContext, bot: Bot):
         await bot.send_message(
             user_id,
             f"✅ **Спасибо за обратную связь!**\n\n"
-            f"Ваши оценки по ЦУР {sdg_id} сохранены.\n\n"
-            f"Вернуться к лекции:",
-            reply_markup=get_sdg_detail_kb(sdg_id),
+            f"Ваши оценки по ЦУР {sdg_id} сохранены.",
+            reply_markup=get_sdg_back_kb(sdg_id),  # ← новая кнопка
             parse_mode=ParseMode.MARKDOWN
         )
         
