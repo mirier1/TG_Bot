@@ -115,6 +115,14 @@ async def handle_difficulty_selection(callback: CallbackQuery, state: FSMContext
     difficulty = parts[1]
     sdg_id = int(parts[2])
     
+    # Логируем выбор квиза
+    await log_activity(
+        user_id=callback.from_user.id,
+        action="quiz",
+        target_id=sdg_id,
+        details=f"difficulty_{difficulty}"
+    )
+
     user_age_group = await get_user_age_group(callback.from_user.id)
     if not user_age_group:
         await callback.answer("❌ Ошибка: возраст не указан")

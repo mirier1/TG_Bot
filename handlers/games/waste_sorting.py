@@ -18,6 +18,14 @@ async def start_waste_game(callback: CallbackQuery, state: FSMContext):
     """Запуск игры 'Сортировка мусора'"""
     age_group = callback.data.split("_")[2]
     
+    # Логирование игры
+    await log_activity(
+        user_id=callback.from_user.id,
+        action="game_sorting",
+        target_id=None,
+        details=f"waste_sorting_{age_group}"
+    )
+
     # Инициализация состояния
     await state.update_data(
         game_type="waste",

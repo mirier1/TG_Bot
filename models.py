@@ -101,3 +101,18 @@ class StorySave(Base):
     __table_args__ = (
         UniqueConstraint('user_id', name='uq_user_story_save'),
     )
+    sdg_id = Column(Integer)
+    usefulness = Column(Integer)   # 1-5
+    interest = Column(Integer)     # 1-5
+    clarity = Column(Integer)      # 1-5
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class UserActivity(Base):
+    __tablename__ = "user_activity"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    action = Column(String)  # 'view_sdg', 'quiz', 'game', 'feedback'
+    target_id = Column(Integer, nullable=True)  # sdg_id
+    details = Column(String, nullable=True)  # game_type, difficulty
+    created_at = Column(DateTime, default=datetime.utcnow)

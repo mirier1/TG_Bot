@@ -18,6 +18,14 @@ async def start_habits_game(callback: CallbackQuery, state: FSMContext):
     """Запуск игры 'Правильные привычки'"""
     age_group = callback.data.split("_")[2]
     
+    #Логирование игры
+    await log_activity(
+        user_id=callback.from_user.id,
+        action="game_habits",
+        target_id=None,
+        details=f"good_habits_{age_group}"
+    )
+
     await state.update_data(
         game_type="habits",
         age_group=age_group,

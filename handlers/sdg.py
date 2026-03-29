@@ -3,6 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from keyboards.main_menu_kb import get_main_kb
 from utils.constants import SDG_TITLES
 from keyboards.sdg_keyboards import get_sdg_list_kb, get_sdg_detail_kb, get_sdg_back_kb
+from services.analytics import log_activity
 
 router = Router()
 
@@ -24,6 +25,15 @@ async def show_sdg_list(update: Message | CallbackQuery):
 @router.callback_query(F.data.startswith("sdg_"))
 async def show_sdg_detail(callback: CallbackQuery):
     sdg_num = int(callback.data.split("_")[1])
+    
+    # Логируем просмотр ЦУР
+    await log_activity(
+        user_id=callback.from_user.id,
+        action="view_sdg",
+        target_id=sdg_num,
+        details=f"sdg_{sdg_num}"
+    )
+
     title = SDG_TITLES.get(sdg_num)
     
     await callback.message.edit_text(

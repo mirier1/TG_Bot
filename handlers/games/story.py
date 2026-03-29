@@ -67,6 +67,7 @@ async def save_game_progress(user_id: int, state_data: dict) -> bool:
         logger.error(f"Ошибка сохранения прогресса: {e}")
         return False
 
+
 async def load_game_progress(user_id: int) -> dict | None:
     try:
         async with AsyncSessionLocal() as session:
@@ -78,6 +79,15 @@ async def load_game_progress(user_id: int) -> dict | None:
     except Exception as e:
         logger.error(f"Ошибка загрузки сохранения: {e}")
     return None
+
+    #Логирование игры
+    await log_activity(
+        user_id=callback.from_user.id,
+        action="game_story",
+        target_id=None,
+        details=f"right_wrong_{age_group}"
+    )
+
 
 async def delete_game_progress(user_id: int) -> bool:
     try:

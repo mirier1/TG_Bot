@@ -18,6 +18,14 @@ async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
     """Запуск игры 'Что правильно?'"""
     age_group = callback.data.split("_")[2]
     
+    #Логирование игры
+    await log_activity(
+        user_id=callback.from_user.id,
+        action="game_right_wrong",
+        target_id=None,
+        details=f"right_wrong_{age_group}"
+    )
+
     await state.update_data(
         game_type="rightwrong",
         age_group=age_group,

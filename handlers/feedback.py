@@ -116,7 +116,7 @@ async def handle_poll(poll_answer: PollAnswer, state: FSMContext, bot: Bot):
             )
             session.add(feedback)
             await session.commit()
-        
+
         # Отправляем сообщение с результатом и кнопкой назад
         await bot.send_message(
             user_id,

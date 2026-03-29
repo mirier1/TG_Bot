@@ -5,7 +5,7 @@ from database import AsyncSessionLocal
 from models import Question, User, GameResult, QuizResult, Feedback, AmbassadorApplication
 from config import ADMIN_IDS
 from sqlalchemy import select
-from datetime import datetime
+from datetime import datetime, timedelta
 
 router = Router()
 
@@ -215,3 +215,24 @@ async def list_applications(message: Message):
     text += "Для одобрения: `/approve <ID>`\nДля отклонения: `/reject <ID> [причина]`"
     
     await message.answer(text, parse_mode="Markdown")
+
+@router.message(Command("stats_activity"), F.func(is_admin))
+async def stats_activity(message: Message):
+    async with AsyncSessionLocal() as session:
+        today = datetime.utcnow().date()
+        stmt = select(func.count()).where(func.date(UserActivity.created_at) == today)
+        today_activity = await session.scalar(stmt)
+        
+        week_ago = datetime.utcnow() - timedelta(days=7)
+        stmt = select(UserActivity.action, func.count()).where(
+            UserActivity.created_at >= week_ago
+        ).group_by(UserActivity.action)
+        result = await session.execute(stmt)
+        actions = result.all()
+        
+        text = f"📊 **Активность за сегодня:** {today_activity}\n\n"
+        text += "**За неделю:**\n"
+        for action, count in actions:
+            text += f"• {action}: {count}\n"
+        
+        await message.answer(text, parse_mode="Markdown")
