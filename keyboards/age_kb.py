@@ -9,8 +9,4 @@ def get_age_kb():
         InlineKeyboardButton(text="9-11 класс", callback_data="age_teen"),
     )
     
-    builder.row(
-        InlineKeyboardButton(text="Студент", callback_data="age_student"),
-    )
-    
     return builder.as_markup()
