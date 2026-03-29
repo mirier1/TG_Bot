@@ -38,9 +38,7 @@ async def show_sdg_detail(callback: CallbackQuery):
     
     await callback.message.edit_text(
         f"🎯 **Цель {sdg_num}: {title}**\n\n"
-        f"*Описание:* В разработке\n"
-        f"*Для вашего возраста:* контент скоро появится",
-        parse_mode="Markdown",
+        f"Текст ЦУР для данной возростоной группы",
         reply_markup=get_sdg_detail_kb(sdg_num)
     )
     await callback.answer()
@@ -74,9 +72,7 @@ async def back_to_lecture(callback: CallbackQuery):
     # Показываем лекцию со всеми кнопками (как в show_sdg_detail)
     await callback.message.edit_text(
         f"🎯 **Цель {sdg_num}: {title}**\n\n"
-        f"*Описание:* В разработке\n"
-        f"*Для вашего возраста:* контент скоро появится",
-        parse_mode="Markdown",
+        f"Текст для данной возростной группы",
         reply_markup=get_sdg_detail_kb(sdg_num)
     )
     await callback.answer()
