@@ -14,6 +14,7 @@ from data.story_engine import GameEngine
 from keyboards.story_kb import story_next_kb, story_end_kb
 from keyboards.main_menu_kb import get_main_kb
 from handlers.games.utils import save_game_result, create_game_keyboard
+from services.analytics import log_activity
 
 logger = logging.getLogger(__name__)
 router = Router()

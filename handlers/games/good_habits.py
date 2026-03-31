@@ -5,6 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from data.games_data import GOOD_HABITS
 from .utils import save_game_result, create_game_keyboard, get_performance_text
+from services.analytics import log_activity
 import random
 import asyncio
 

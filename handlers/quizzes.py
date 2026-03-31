@@ -7,6 +7,7 @@ from database import AsyncSessionLocal
 from models import QuizResult, User
 from data.quiz_questions import QUIZ_QUESTIONS
 from handlers.states.quiz_states import QuizStates
+from services.analytics import log_activity
 from sqlalchemy import select
 import random
 
