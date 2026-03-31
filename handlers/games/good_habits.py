@@ -7,7 +7,6 @@ from data.games_data import GOOD_HABITS
 from .utils import save_game_result, create_game_keyboard, get_performance_text
 from services.analytics import log_activity
 import random
-import asyncio
 
 router = Router()
 
@@ -19,12 +18,12 @@ async def start_habits_game(callback: CallbackQuery, state: FSMContext):
     """Запуск игры 'Правильные привычки'"""
     age_group = callback.data.split("_")[2]
     
-    #Логирование игры
+    # Логирование игры
     await log_activity(
         user_id=callback.from_user.id,
-        action="game_habits",
+        action="game",
         target_id=None,
-        details=f"good_habits_{age_group}"
+        details=f"habits_{age_group}"
     )
 
     await state.update_data(
@@ -42,7 +41,6 @@ async def ask_habits_question(callback: CallbackQuery, state: FSMContext):
     """Задаёт вопрос по привычкам"""
     data = await state.get_data()
     
-    # Выбираем случайную привычку
     habit, is_good = random.choice(GOOD_HABITS)
     
     await state.update_data(
@@ -51,7 +49,6 @@ async def ask_habits_question(callback: CallbackQuery, state: FSMContext):
         step=data["step"] + 1
     )
     
-    # Создаём клавиатуру
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
@@ -121,7 +118,6 @@ async def finish_habits_game(callback: CallbackQuery, state: FSMContext, result_
     """Завершение игры 'Правильные привычки'"""
     data = await state.get_data()
     
-    # Сохраняем результат
     max_score = data["total_steps"] * 10
     await save_game_result(
         user_id=callback.from_user.id,
@@ -132,7 +128,6 @@ async def finish_habits_game(callback: CallbackQuery, state: FSMContext, result_
         steps=data["total_steps"]
     )
     
-    # Финальное сообщение
     percentage = (data["score"] / max_score) * 100
     performance = get_performance_text(data["score"], max_score)
     

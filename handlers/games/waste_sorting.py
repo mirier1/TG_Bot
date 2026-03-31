@@ -7,7 +7,6 @@ from data.games_data import WASTE_ITEMS, WASTE_CATEGORIES
 from .utils import save_game_result, create_game_keyboard, get_performance_text
 from services.analytics import log_activity
 import random
-import asyncio
 
 router = Router()
 
@@ -22,9 +21,9 @@ async def start_waste_game(callback: CallbackQuery, state: FSMContext):
     # Логирование игры
     await log_activity(
         user_id=callback.from_user.id,
-        action="game_sorting",
+        action="game",
         target_id=None,
-        details=f"waste_sorting_{age_group}"
+        details=f"waste_{age_group}"
     )
 
     # Инициализация состояния
@@ -93,7 +92,6 @@ async def handle_waste_answer(callback: CallbackQuery, state: FSMContext):
     await state.update_data(score=data["score"])
     
     if data["step"] < data["total_steps"]:
-        # ПОКАЗЫВАЕМ КНОПКУ "ДАЛЕЕ" вместо ожидания
         builder = InlineKeyboardBuilder()
         builder.row(
             InlineKeyboardButton(
@@ -111,7 +109,6 @@ async def handle_waste_answer(callback: CallbackQuery, state: FSMContext):
     else:
         await finish_waste_game(callback, state, result_text)
 
-# ДОБАВЬ НОВЫЙ ХЕНДЛЕР ДЛЯ КНОПКИ "ДАЛЕЕ"
 @router.callback_query(F.data == "waste_next_question")
 async def next_waste_question(callback: CallbackQuery, state: FSMContext):
     """Переход к следующему вопросу по кнопке"""
@@ -122,7 +119,6 @@ async def finish_waste_game(callback: CallbackQuery, state: FSMContext, result_t
     """Завершение игры 'Сортировка мусора'"""
     data = await state.get_data()
     
-    # Сохраняем результат
     max_score = data["total_steps"] * 10
     await save_game_result(
         user_id=callback.from_user.id,
@@ -133,7 +129,6 @@ async def finish_waste_game(callback: CallbackQuery, state: FSMContext, result_t
         steps=data["total_steps"]
     )
     
-    # Создаём финальное сообщение
     percentage = (data["score"] / max_score) * 100
     performance = get_performance_text(data["score"], max_score)
     

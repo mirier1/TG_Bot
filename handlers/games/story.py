@@ -68,7 +68,6 @@ async def save_game_progress(user_id: int, state_data: dict) -> bool:
         logger.error(f"Ошибка сохранения прогресса: {e}")
         return False
 
-
 async def load_game_progress(user_id: int) -> dict | None:
     try:
         async with AsyncSessionLocal() as session:
@@ -80,15 +79,6 @@ async def load_game_progress(user_id: int) -> dict | None:
     except Exception as e:
         logger.error(f"Ошибка загрузки сохранения: {e}")
     return None
-
-    #Логирование игры
-    await log_activity(
-        user_id=callback.from_user.id,
-        action="game_story",
-        target_id=None,
-        details=f"right_wrong_{age_group}"
-    )
-
 
 async def delete_game_progress(user_id: int) -> bool:
     try:
@@ -125,10 +115,18 @@ async def start_new_story_game(callback: CallbackQuery, state: FSMContext, age_g
     )
     await callback.answer()
 
-# Основной обработчик запуска – без возрастных ограничений
+# Основной обработчик запуска
 @router.callback_query(F.data == "game_story")
 async def start_story_game(callback: CallbackQuery, state: FSMContext):
     """Запуск сюжетной игры – доступен всем"""
+    # Логирование запуска игры
+    await log_activity(
+        user_id=callback.from_user.id,
+        action="game",
+        target_id=None,
+        details="story"
+    )
+
     # Проверяем наличие сохранения
     saved_data = await load_game_progress(callback.from_user.id)
     if saved_data:
@@ -152,7 +150,9 @@ async def start_story_game(callback: CallbackQuery, state: FSMContext):
     user_age = await get_user_age_group(callback.from_user.id) or "teen"
     await start_new_story_game(callback, state, user_age)
 
-# Обработчик "Далее" (без изменений)
+# Остальные обработчики (story_next, story_option и т.д.) остаются без изменений
+# Они приведены ниже для полноты, но вы можете оставить свои, если они работают.
+
 @router.callback_query(F.data == "story_next")
 async def story_next(callback: CallbackQuery, state: FSMContext):
     cur_state = await state.get_state()
@@ -202,7 +202,6 @@ async def story_next(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer(txt, reply_markup=story_end_kb(), parse_mode="Markdown")
     await callback.answer()
 
-# Обработчик выбора варианта (без изменений)
 @router.callback_query(StoryGameStates.answering, F.data.startswith("story_opt_"))
 async def story_option(callback: CallbackQuery, state: FSMContext):
     label = callback.data.replace("story_opt_", "")
@@ -262,7 +261,6 @@ async def story_option(callback: CallbackQuery, state: FSMContext):
     )
     await callback.answer()
 
-# Завершение игры (без изменений)
 @router.callback_query(F.data == "story_end")
 async def story_end(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -295,7 +293,6 @@ async def story_end(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
 
-# Дополнительные обработчики (статы, сохранение, выход, продолжение, новая игра, удаление сохранения)
 @router.callback_query(F.data == "story_show_stats")
 async def show_stats(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -369,7 +366,6 @@ async def delete_save(callback: CallbackQuery, state: FSMContext):
     else:
         await callback.answer("❌ Не найдено сохранение", show_alert=True)
 
-# Вспомогательная функция показа вопроса (с кнопками сохранения, выхода, статов)
 async def show_question(msg: Message, state: FSMContext, qid: str):
     data = await state.get_data()
     scores = data.get("scores", dict(engine.initial_scores))
@@ -430,7 +426,6 @@ async def show_question(msg: Message, state: FSMContext, qid: str):
     await state.update_data(qid=qid)
     await state.set_state(StoryGameStates.answering)
 
-    # Клавиатура с вариантами + кнопки управления
     builder = InlineKeyboardBuilder()
     for opt in q["options"]:
         builder.add(InlineKeyboardButton(

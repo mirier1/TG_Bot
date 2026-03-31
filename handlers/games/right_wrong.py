@@ -7,7 +7,6 @@ from data.games_data import RIGHT_WRONG_SCENARIOS
 from .utils import save_game_result, create_game_keyboard, get_performance_text
 from services.analytics import log_activity
 import random
-import asyncio
 
 router = Router()
 
@@ -19,12 +18,12 @@ async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
     """Запуск игры 'Что правильно?'"""
     age_group = callback.data.split("_")[2]
     
-    #Логирование игры
+    # Логирование игры
     await log_activity(
         user_id=callback.from_user.id,
-        action="game_right_wrong",
+        action="game",
         target_id=None,
-        details=f"right_wrong_{age_group}"
+        details=f"rightwrong_{age_group}"
     )
 
     await state.update_data(
@@ -43,18 +42,15 @@ async def ask_rightwrong_question(callback: CallbackQuery, state: FSMContext):
     """Задаёт вопрос сценария"""
     data = await state.get_data()
     
-    # Выбираем сценарий, который ещё не использовался
     available_scenarios = [s for s in RIGHT_WRONG_SCENARIOS 
                           if s not in data.get("used_scenarios", [])]
     
     if not available_scenarios:
-        # Если все сценарии использованы, перемешиваем заново
         await state.update_data(used_scenarios=[])
         available_scenarios = RIGHT_WRONG_SCENARIOS.copy()
     
     scenario, answers = random.choice(available_scenarios)
     
-    # Обновляем состояние
     data["used_scenarios"].append((scenario, answers))
     await state.update_data(
         current_scenario=scenario,
@@ -63,12 +59,9 @@ async def ask_rightwrong_question(callback: CallbackQuery, state: FSMContext):
         used_scenarios=data["used_scenarios"]
     )
     
-    # Создаём клавиатуру с вариантами (используем индексы для callback_data)
     builder = InlineKeyboardBuilder()
     for i, (answer_text, points) in enumerate(answers.items()):
-        # Используем индекс вместо текста для callback_data
         callback_data = f"rightwrong_answer_{i}"
-        
         builder.row(
             InlineKeyboardButton(
                 text=answer_text,
@@ -134,10 +127,7 @@ async def finish_rightwrong_game(callback: CallbackQuery, state: FSMContext, res
     """Завершение игры 'Что правильно?'"""
     data = await state.get_data()
     
-    # Максимальный возможный счёт (все ответы по +10)
     max_score = data["total_steps"] * 10
-    
-    # Сохраняем результат
     await save_game_result(
         user_id=callback.from_user.id,
         game_type="rightwrong",
@@ -147,7 +137,6 @@ async def finish_rightwrong_game(callback: CallbackQuery, state: FSMContext, res
         steps=data["total_steps"]
     )
     
-    # Финальное сообщение
     percentage = (data["score"] / max_score) * 100 if max_score > 0 else 0
     performance = get_performance_text(data["score"], max_score)
     
