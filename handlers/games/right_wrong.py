@@ -18,7 +18,6 @@ async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
     """Запуск игры 'Что правильно?'"""
     age_group = callback.data.split("_")[2]
     
-    # Логирование игры
     await log_activity(
         user_id=callback.from_user.id,
         action="game",
@@ -39,8 +38,14 @@ async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 async def ask_rightwrong_question(callback: CallbackQuery, state: FSMContext):
-    """Задаёт вопрос сценария"""
+    """Задаёт вопрос сценария (удаляя предыдущее сообщение)"""
     data = await state.get_data()
+    
+    # Удаляем сообщение с кнопкой "Далее", если оно есть
+    try:
+        await callback.message.delete()
+    except:
+        pass
     
     available_scenarios = [s for s in RIGHT_WRONG_SCENARIOS 
                           if s not in data.get("used_scenarios", [])]
@@ -124,8 +129,14 @@ async def next_rightwrong_question(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 async def finish_rightwrong_game(callback: CallbackQuery, state: FSMContext, result_text: str):
-    """Завершение игры 'Что правильно?'"""
+    """Завершение игры 'Что правильно?' (удаляет сообщение с кнопкой Далее)"""
     data = await state.get_data()
+    
+    # Удаляем сообщение с результатом выбора и кнопкой "Далее"
+    try:
+        await callback.message.delete()
+    except:
+        pass
     
     max_score = data["total_steps"] * 10
     await save_game_result(
