@@ -6,6 +6,7 @@ from models import Question, User, GameResult, QuizResult, Feedback, AmbassadorA
 from config import ADMIN_IDS
 from sqlalchemy import select
 from datetime import datetime, timedelta
+from services.analytics import log_activity
 
 router = Router()
 
