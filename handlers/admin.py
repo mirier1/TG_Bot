@@ -2,9 +2,9 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import Command, CommandObject
 from database import AsyncSessionLocal
-from models import Question, User, GameResult, QuizResult, Feedback, AmbassadorApplication
+from models import Question, User, GameResult, QuizResult, Feedback, AmbassadorApplication, UserActivity
 from config import ADMIN_IDS
-from sqlalchemy import select
+from sqlalchemy import select, func
 from datetime import datetime, timedelta
 from services.analytics import log_activity
 
