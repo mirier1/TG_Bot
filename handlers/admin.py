@@ -216,13 +216,20 @@ async def list_applications(message: Message):
     
     await message.answer(text, parse_mode="Markdown")
 
+
+# ---------- СТАТИСТИКА АКТИВНОСТИ ----------
 @router.message(Command("stats_activity"), F.func(is_admin))
 async def stats_activity(message: Message):
+    """Активность пользователей за сегодня/неделю"""
+    from datetime import datetime, timedelta
+    
     async with AsyncSessionLocal() as session:
+        # За сегодня
         today = datetime.utcnow().date()
         stmt = select(func.count()).where(func.date(UserActivity.created_at) == today)
-        today_activity = await session.scalar(stmt)
+        today_activity = await session.scalar(stmt) or 0
         
+        # За неделю
         week_ago = datetime.utcnow() - timedelta(days=7)
         stmt = select(UserActivity.action, func.count()).where(
             UserActivity.created_at >= week_ago
@@ -232,7 +239,68 @@ async def stats_activity(message: Message):
         
         text = f"📊 **Активность за сегодня:** {today_activity}\n\n"
         text += "**За неделю:**\n"
-        for action, count in actions:
-            text += f"• {action}: {count}\n"
+        if actions:
+            for action, count in actions:
+                text += f"• {action}: {count}\n"
+        else:
+            text += "Нет данных\n"
+        
+        await message.answer(text, parse_mode="Markdown")
+
+# ---------- ПОПУЛЯРНЫЕ ЦУР ----------
+@router.message(Command("stats_popular"), F.func(is_admin))
+async def stats_popular(message: Message):
+    """Топ-5 популярных ЦУР"""
+    async with AsyncSessionLocal() as session:
+        stmt = select(
+            UserActivity.target_id, 
+            func.count()
+        ).where(
+            UserActivity.action == 'view_sdg'
+        ).group_by(
+            UserActivity.target_id
+        ).order_by(
+            func.count().desc()
+        ).limit(5)
+        
+        result = await session.execute(stmt)
+        rows = result.all()
+        
+        if not rows:
+            await message.answer("📭 Нет данных о просмотрах ЦУР")
+            return
+        
+        text = "🏆 **Топ-5 популярных ЦУР:**\n\n"
+        for target_id, count in rows:
+            text += f"ЦУР {target_id}: {count} просмотров\n"
+        
+        await message.answer(text, parse_mode="Markdown")
+
+# ---------- ПОПУЛЯРНОСТЬ ИГР ----------
+@router.message(Command("stats_games_popular"), F.func(is_admin))
+async def stats_games_popular(message: Message):
+    """Популярность игр"""
+    async with AsyncSessionLocal() as session:
+        stmt = select(
+            UserActivity.details, 
+            func.count()
+        ).where(
+            UserActivity.action == 'game'
+        ).group_by(
+            UserActivity.details
+        ).order_by(
+            func.count().desc()
+        )
+        
+        result = await session.execute(stmt)
+        rows = result.all()
+        
+        if not rows:
+            await message.answer("📭 Нет данных об играх")
+            return
+        
+        text = "🎮 **Популярность игр:**\n\n"
+        for details, count in rows:
+            text += f"• {details}: {count} запусков\n"
         
         await message.answer(text, parse_mode="Markdown")
