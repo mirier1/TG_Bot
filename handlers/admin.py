@@ -194,7 +194,6 @@ async def stats_activity(message: Message):
         result = await session.execute(stmt)
         actions = result.all()
         
-        # Словарь перевода действий
         translate = {
             'game': '🎮 Игры',
             'viewsdg': '📚 Просмотры ЦУР',
@@ -216,7 +215,7 @@ async def stats_activity(message: Message):
         
         await message.answer(text, parse_mode="Markdown")
 
-# ---------- ПОПУЛЯРНОСТЬ ИГР (ИСПРАВЛЕННАЯ) ----------
+# ---------- ПОПУЛЯРНОСТЬ ИГР ----------
 @router.message(Command("stats_games_popular"), F.func(is_admin))
 async def stats_games_popular(message: Message):
     async with AsyncSessionLocal() as session:
@@ -237,20 +236,35 @@ async def stats_games_popular(message: Message):
             await message.answer("📭 Нет данных об играх. Возможно, ещё никто не играл после последнего обновления.")
             return
         
-        # Перевод названий игр (из details)
         game_names = {
+            # Новые записи (с подчёркиванием)
             'waste_young': '♻️ Сортировка мусора (5-7 кл)',
             'waste_teen': '♻️ Сортировка мусора (9-11 кл)',
             'habits_young': '👍 Правильные привычки (5-7 кл)',
             'habits_teen': '👍 Правильные привычки (9-11 кл)',
             'rightwrong_young': '❓ Что правильно? (5-7 кл)',
+            'rightwrong_teen': '❓ Что правильно? (9-11 кл)',
             'story': '📖 Сюжетная игра',
+            # Старые записи (без подчёркивания) для обратной совместимости
+            'wasteyoung': '♻️ Сортировка мусора (5-7 кл)',
+            'wasteteen': '♻️ Сортировка мусора (9-11 кл)',
+            'habitsyoung': '👍 Правильные привычки (5-7 кл)',
+            'habitsteen': '👍 Правильные привычки (9-11 кл)',
+            'rightwrongyoung': '❓ Что правильно? (5-7 кл)',
+            'rightwrongteen': '❓ Что правильно? (9-11 кл)',
         }
         
         text = "🎮 **Популярность игр:**\n\n"
         for details, count in rows:
             name = game_names.get(details, details)
-            text += f"• {name}: {count} запусков\n"
+            # Склонение
+            if count == 1:
+                ending = "запуск"
+            elif 2 <= count <= 4:
+                ending = "запуска"
+            else:
+                ending = "запусков"
+            text += f"• {name}: {count} {ending}\n"
         
         await message.answer(text, parse_mode="Markdown")
 
