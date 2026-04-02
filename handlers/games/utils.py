@@ -34,6 +34,7 @@ async def save_game_result(user_id: int, game_type: str, age_group: str,
         await session.commit()
 
 def create_game_keyboard(age_group: str, game_type: str):
+    """Создаёт клавиатуру для завершения игры"""
     builder = InlineKeyboardBuilder()
     
     builder.row(
@@ -45,7 +46,7 @@ def create_game_keyboard(age_group: str, game_type: str):
     builder.row(
         InlineKeyboardButton(
             text="🎮 Другие игры",
-            callback_data=f"games_{age_group}"
+            callback_data="games_1_8"   # ← ЖЁСТКО ЗАДАНО, не зависит от age_group
         )
     )
     builder.row(
