@@ -119,7 +119,8 @@ async def start_new_story_game(callback: CallbackQuery, state: FSMContext, age_g
 async def start_story_game(callback: CallbackQuery, state: FSMContext):
     # Проверка возраста: только 9-11 классы
     user_age = await get_user_age_group(callback.from_user.id)
-    if user_age not in ("9-11", "9-11 классы", "9_11"):
+    allowed = ("9-11", "9_11", "9-11 классы")
+    if user_age not in allowed:
         await callback.answer("❌ Сюжетная игра доступна только для учеников 9-11 классов!", show_alert=True)
         return
     

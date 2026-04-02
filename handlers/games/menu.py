@@ -6,9 +6,8 @@ router = Router()
 
 def get_games_menu_kb():
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="🎮 Игры для 1-4 классов", callback_data="games_1_4"))
-    builder.row(InlineKeyboardButton(text="🎮 Игры для 5-8 классов", callback_data="games_5_8"))
-    builder.row(InlineKeyboardButton(text="🎮 Игры для 9-11 классов", callback_data="games_9_11"))
+    builder.row(InlineKeyboardButton(text="🎮 Игры для 1-8 классов", callback_data="games_1_8"))
+    builder.row(InlineKeyboardButton(text="📖 Сюжетная игра (9-11 классы)", callback_data="game_story"))
     builder.row(InlineKeyboardButton(text="◀️ Назад в главное меню", callback_data="back_main_menu"))
     return builder.as_markup()
 
@@ -19,33 +18,27 @@ async def show_games_menu(callback: CallbackQuery):
     except:
         pass
     await callback.message.answer(
-        "🎮 **Мини-игры**\n\nВыберите возрастную группу:",
+        "🎮 **Мини-игры**\n\nВыберите режим:",
         reply_markup=get_games_menu_kb(),
         parse_mode="Markdown"
     )
     await callback.answer()
 
-@router.callback_query(F.data.startswith("games_"))
-async def show_age_specific_games(callback: CallbackQuery):
-    age_group = callback.data.split("_")[1]  # '1_4', '5_8', '9_11'
-    age_display = {"1_4": "1-4 классы", "5_8": "5-8 классы", "9_11": "9-11 классы"}
+@router.callback_query(F.data == "games_1_8")
+async def show_games_for_1_8(callback: CallbackQuery):
     try:
         await callback.message.delete()
     except:
         pass
 
     builder = InlineKeyboardBuilder()
-    if age_group in ("1_4", "5_8"):
-        builder.row(InlineKeyboardButton(text="♻️ Сортировка мусора", callback_data=f"game_waste_{age_group}"))
-        builder.row(InlineKeyboardButton(text="👍 Правильные привычки", callback_data=f"game_habits_{age_group}"))
-        builder.row(InlineKeyboardButton(text="❓ Что правильно?", callback_data=f"game_rightwrong_{age_group}"))
-    else:  # 9_11
-        builder.row(InlineKeyboardButton(text="📖 Сюжетная игра", callback_data="game_story"))
-
-    builder.row(InlineKeyboardButton(text="◀️ Назад к выбору возраста", callback_data="menu_games"))
+    builder.row(InlineKeyboardButton(text="♻️ Сортировка мусора", callback_data="game_waste_1_8"))
+    builder.row(InlineKeyboardButton(text="👍 Правильные привычки", callback_data="game_habits_1_8"))
+    builder.row(InlineKeyboardButton(text="❓ Что правильно?", callback_data="game_rightwrong_1_8"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад к выбору режима", callback_data="menu_games"))
 
     await callback.message.answer(
-        f"🎮 Игры для **{age_display[age_group]}**\n\nВыберите игру:",
+        "🎮 **Игры для 1-8 классов**\n\nВыберите игру:",
         reply_markup=builder.as_markup(),
         parse_mode="Markdown"
     )

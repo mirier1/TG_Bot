@@ -15,7 +15,7 @@ class RightWrongGameStates(StatesGroup):
 
 @router.callback_query(F.data.startswith("game_rightwrong_"))
 async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
-    age_group = callback.data.split("_")[2]  # '1_4', '5_8', '9_11'
+    age_group = callback.data.split("_")[2]  # '1_8'
     
     await log_activity(
         user_id=callback.from_user.id,

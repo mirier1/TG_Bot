@@ -1,8 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.fsm.context import FSMContext
-
+from aiogram.types import CallbackQuery
 from keyboards.main_menu_kb import get_main_kb
 
 router = Router()

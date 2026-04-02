@@ -15,7 +15,7 @@ class HabitsGameStates(StatesGroup):
 
 @router.callback_query(F.data.startswith("game_habits_"))
 async def start_habits_game(callback: CallbackQuery, state: FSMContext):
-    age_group = callback.data.split("_")[2]  # '1_4', '5_8', '9_11'
+    age_group = callback.data.split("_")[2]  # '1_8'
     
     await log_activity(
         user_id=callback.from_user.id,
