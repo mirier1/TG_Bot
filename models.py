@@ -9,7 +9,7 @@ class User(Base):
 
     id = Column(BigInteger, primary_key=True)
     username = Column(String, nullable=True)
-    age_group = Column(String) # 'young', 'teen', 'student'
+    age_group = Column(String)  # '1-4', '5-8', '9-11'
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Question(Base):
@@ -32,7 +32,7 @@ class QuizResult(Base):
     user_id = Column(BigInteger)
     sdg_id = Column(Integer)
     difficulty = Column(String)
-    age_group = Column(String) 
+    age_group = Column(String)  # '1-4', '5-8', '9-11'
     score = Column(Integer)
     total = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -49,7 +49,7 @@ class GameResult(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(BigInteger)
     game_type = Column(String)  # 'waste', 'habits', 'rightwrong', 'story'
-    age_group = Column(String)  # 'young', 'teen', 'student'
+    age_group = Column(String)  # '1-4', '5-8', '9-11'
     difficulty = Column(String, nullable=True)
     score = Column(Integer)
     max_score = Column(Integer)
@@ -88,7 +88,6 @@ class Feedback(Base):
     comment = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-# Новая модель для сохранений сюжетной игры
 class StorySave(Base):
     __tablename__ = "story_saves"
     
@@ -101,18 +100,13 @@ class StorySave(Base):
     __table_args__ = (
         UniqueConstraint('user_id', name='uq_user_story_save'),
     )
-    sdg_id = Column(Integer)
-    usefulness = Column(Integer)   # 1-5
-    interest = Column(Integer)     # 1-5
-    clarity = Column(Integer)      # 1-5
-    created_at = Column(DateTime, default=datetime.utcnow)
 
 class UserActivity(Base):
     __tablename__ = "user_activity"
     
     id = Column(Integer, primary_key=True)
     user_id = Column(BigInteger)
-    action = Column(String)  # 'view_sdg', 'quiz', 'game', 'feedback'
-    target_id = Column(Integer, nullable=True)  # sdg_id
-    details = Column(String, nullable=True)  # game_type, difficulty
+    action = Column(String)
+    target_id = Column(Integer, nullable=True)
+    details = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

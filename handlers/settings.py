@@ -40,18 +40,20 @@ async def change_age(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("age_"))
 async def process_new_age(callback: CallbackQuery):
     age_map = {
-        "age_young": "young",
-        "age_teen": "teen", 
-        "age_student": "student"
+        "age_1_4": "1-4",
+        "age_5_8": "5-8",
+        "age_9_11": "9-11",
     }
     
     age_group = age_map.get(callback.data)
+    if not age_group:
+        await callback.answer("Ошибка выбора")
+        return
     
     async with AsyncSessionLocal() as session:
         stmt = select(User).where(User.id == callback.from_user.id)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
-        
         if user:
             user.age_group = age_group
             await session.commit()

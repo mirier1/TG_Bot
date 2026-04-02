@@ -13,6 +13,15 @@ import random
 
 router = Router()
 
+def map_age_to_quiz_key(age_group: str) -> str:
+    """Преобразует возрастную группу в ключ для QUIZ_QUESTIONS"""
+    mapping = {
+        "1-4": "young",
+        "5-8": "young",
+        "9-11": "teen",
+    }
+    return mapping.get(age_group, "teen")
+
 async def get_user_age_group(user_id: int):
     async with AsyncSessionLocal() as session:
         stmt = select(User.age_group).where(User.id == user_id)
@@ -74,8 +83,9 @@ async def show_difficulty_selection(callback: CallbackQuery, sdg_id: int, age_gr
 
 async def start_new_quiz(callback: CallbackQuery, state: FSMContext, sdg_id: int, 
                         difficulty: str, age_group: str):
+    quiz_key = map_age_to_quiz_key(age_group)
     try:
-        questions = QUIZ_QUESTIONS[sdg_id][age_group][difficulty]
+        questions = QUIZ_QUESTIONS[sdg_id][quiz_key][difficulty]
     except KeyError:
         await callback.answer("❌ Вопросы не найдены")
         return
@@ -84,8 +94,8 @@ async def start_new_quiz(callback: CallbackQuery, state: FSMContext, sdg_id: int
         await callback.answer("❌ Вопросы отсутствуют")
         return
     
-    MAX_QUSTIONS = 10
-    selected_questions = random.sample(questions, min(MAX_QUSTIONS, len(questions)))
+    MAX_QUESTIONS = 10
+    selected_questions = random.sample(questions, min(MAX_QUESTIONS, len(questions)))
     
     await state.update_data(
         sdg_id=sdg_id,
@@ -116,7 +126,6 @@ async def handle_difficulty_selection(callback: CallbackQuery, state: FSMContext
     difficulty = parts[1]
     sdg_id = int(parts[2])
     
-    # Логируем выбор квиза
     await log_activity(
         user_id=callback.from_user.id,
         action="quiz",
@@ -183,10 +192,8 @@ async def show_question(callback: CallbackQuery, state: FSMContext):
     
     builder = InlineKeyboardBuilder()
     for i, option in enumerate(question["options"]):
-        # Разбиваем длинные варианты
         option_text = option
         if len(option_text) > 40:
-            # Переносим длинные варианты
             option_text = option_text[:37] + "..."
         builder.add(InlineKeyboardButton(
             text=option_text,

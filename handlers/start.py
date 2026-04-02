@@ -17,19 +17,16 @@ async def command_start(message: Message):
         user = result.scalar_one_or_none()
 
         if not user:
-            # Новый пользователь
             await message.answer(
                 "👋 Привет! Для начала выбери свою возрастную группу:",
                 reply_markup=get_age_kb()
             )
         elif not user.age_group:
-            # Пользователь есть, но возраст не выбран
             await message.answer(
                 "📊 Выбери свою возрастную группу:",
                 reply_markup=get_age_kb()
             )
         else:
-            # Всё есть, показываем главное меню
             await message.answer(
                 f"✅ Добро пожаловать, {message.from_user.first_name or 'пользователь'}!\n\n"
                 "Выберите раздел:",
@@ -39,13 +36,12 @@ async def command_start(message: Message):
 @router.callback_query(F.data.startswith("age_"))
 async def set_age_inline(callback: CallbackQuery):
     age_map = {
-        "age_young": "young",
-        "age_teen": "teen", 
-        "age_student": "student"
+        "age_1_4": "1-4",
+        "age_5_8": "5-8",
+        "age_9_11": "9-11",
     }
     
     age_group = age_map.get(callback.data)
-    
     if not age_group:
         await callback.answer("Ошибка выбора возраста")
         return
@@ -56,7 +52,6 @@ async def set_age_inline(callback: CallbackQuery):
         user = result.scalar_one_or_none()
         
         if not user:
-            # Создаём нового пользователя
             user = User(
                 id=callback.from_user.id,
                 username=callback.from_user.username or callback.from_user.first_name,
@@ -64,18 +59,15 @@ async def set_age_inline(callback: CallbackQuery):
             )
             session.add(user)
         else:
-            # Обновляем существующего
             user.age_group = age_group
         
         await session.commit()
     
-    # Удаляем сообщение с выбором возраста
     try:
         await callback.message.delete()
     except:
         pass
     
-    # Показываем главное меню
     await callback.message.answer(
         f"✅ Возрастная группа сохранена!\n\n"
         "Теперь выберите раздел:",

@@ -15,10 +15,8 @@ class HabitsGameStates(StatesGroup):
 
 @router.callback_query(F.data.startswith("game_habits_"))
 async def start_habits_game(callback: CallbackQuery, state: FSMContext):
-    """Запуск игры 'Правильные привычки'"""
-    age_group = callback.data.split("_")[2]
+    age_group = callback.data.split("_")[2]  # '1_4', '5_8', '9_11'
     
-    # Логирование игры
     await log_activity(
         user_id=callback.from_user.id,
         action="game",
@@ -38,7 +36,6 @@ async def start_habits_game(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 async def ask_habits_question(callback: CallbackQuery, state: FSMContext):
-    """Задаёт вопрос по привычкам"""
     data = await state.get_data()
     
     habit, is_good = random.choice(GOOD_HABITS)
@@ -115,7 +112,6 @@ async def next_habits_question(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 async def finish_habits_game(callback: CallbackQuery, state: FSMContext, result_text: str):
-    """Завершение игры 'Правильные привычки'"""
     data = await state.get_data()
     
     max_score = data["total_steps"] * 10

@@ -115,11 +115,14 @@ async def start_new_story_game(callback: CallbackQuery, state: FSMContext, age_g
     )
     await callback.answer()
 
-# Основной обработчик запуска
 @router.callback_query(F.data == "game_story")
 async def start_story_game(callback: CallbackQuery, state: FSMContext):
-    """Запуск сюжетной игры – доступен всем"""
-    # Логирование запуска игры
+    # Проверка возраста: только 9-11 классы
+    user_age = await get_user_age_group(callback.from_user.id)
+    if user_age not in ("9-11", "9-11 классы", "9_11"):
+        await callback.answer("❌ Сюжетная игра доступна только для учеников 9-11 классов!", show_alert=True)
+        return
+    
     await log_activity(
         user_id=callback.from_user.id,
         action="game",
@@ -127,7 +130,6 @@ async def start_story_game(callback: CallbackQuery, state: FSMContext):
         details="story"
     )
 
-    # Проверяем наличие сохранения
     saved_data = await load_game_progress(callback.from_user.id)
     if saved_data:
         builder = InlineKeyboardBuilder()
@@ -146,12 +148,8 @@ async def start_story_game(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
 
-    # Если сохранения нет, определяем возраст (используется только для статистики)
-    user_age = await get_user_age_group(callback.from_user.id) or "teen"
+    user_age = await get_user_age_group(callback.from_user.id) or "9-11"
     await start_new_story_game(callback, state, user_age)
-
-# Остальные обработчики (story_next, story_option и т.д.) остаются без изменений
-# Они приведены ниже для полноты, но вы можете оставить свои, если они работают.
 
 @router.callback_query(F.data == "story_next")
 async def story_next(callback: CallbackQuery, state: FSMContext):
@@ -355,7 +353,7 @@ async def continue_game(callback: CallbackQuery, state: FSMContext):
 async def new_game(callback: CallbackQuery, state: FSMContext):
     await delete_game_progress(callback.from_user.id)
     await state.clear()
-    user_age = await get_user_age_group(callback.from_user.id) or "teen"
+    user_age = await get_user_age_group(callback.from_user.id) or "9-11"
     await start_new_story_game(callback, state, user_age)
     await callback.answer()
 
@@ -377,7 +375,6 @@ async def show_question(msg: Message, state: FSMContext, qid: str):
         await msg.answer("⚠️ Вопрос не найден.")
         return
 
-    # pre_condition
     pc = engine.check_pre_condition(qid, choices)
     if pc and pc.get("skip"):
         effects = pc.get("effects", {})
@@ -411,7 +408,6 @@ async def show_question(msg: Message, state: FSMContext, qid: str):
         await msg.answer(full_text, reply_markup=story_next_kb(), parse_mode="Markdown")
         return
 
-    # auto_effects
     auto = q.get("auto_effects")
     auto_text = ""
     if auto:

@@ -15,10 +15,8 @@ class WasteGameStates(StatesGroup):
 
 @router.callback_query(F.data.startswith("game_waste_"))
 async def start_waste_game(callback: CallbackQuery, state: FSMContext):
-    """Запуск игры 'Сортировка мусора'"""
-    age_group = callback.data.split("_")[2]
+    age_group = callback.data.split("_")[2]  # '1_4', '5_8', '9_11'
     
-    # Логирование игры
     await log_activity(
         user_id=callback.from_user.id,
         action="game",
@@ -26,7 +24,6 @@ async def start_waste_game(callback: CallbackQuery, state: FSMContext):
         details=f"waste_{age_group}"
     )
 
-    # Инициализация состояния
     await state.update_data(
         game_type="waste",
         age_group=age_group,
@@ -39,21 +36,17 @@ async def start_waste_game(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 async def ask_waste_question(callback: CallbackQuery, state: FSMContext):
-    """Задаёт вопрос по сортировке мусора"""
     data = await state.get_data()
     
-    # Выбираем случайный предмет
     item_name = random.choice(list(WASTE_ITEMS.keys()))
     correct_category = WASTE_ITEMS[item_name]
     
-    # Обновляем состояние
     await state.update_data(
         current_item=item_name,
         correct_category=correct_category,
         step=data["step"] + 1
     )
     
-    # Создаём клавиатуру с вариантами
     builder = InlineKeyboardBuilder()
     categories = WASTE_CATEGORIES.copy()
     random.shuffle(categories)
@@ -66,7 +59,6 @@ async def ask_waste_question(callback: CallbackQuery, state: FSMContext):
             )
         )
     
-    # Отправляем вопрос
     await callback.message.edit_text(
         f"♻️ **Сортировка мусора**\n\n"
         f"Вопрос {data['step'] + 1}/{data['total_steps']}\n"
@@ -111,12 +103,10 @@ async def handle_waste_answer(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "waste_next_question")
 async def next_waste_question(callback: CallbackQuery, state: FSMContext):
-    """Переход к следующему вопросу по кнопке"""
     await ask_waste_question(callback, state)
     await callback.answer()
 
 async def finish_waste_game(callback: CallbackQuery, state: FSMContext, result_text: str):
-    """Завершение игры 'Сортировка мусора'"""
     data = await state.get_data()
     
     max_score = data["total_steps"] * 10

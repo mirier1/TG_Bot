@@ -15,8 +15,7 @@ class RightWrongGameStates(StatesGroup):
 
 @router.callback_query(F.data.startswith("game_rightwrong_"))
 async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
-    """Запуск игры 'Что правильно?'"""
-    age_group = callback.data.split("_")[2]
+    age_group = callback.data.split("_")[2]  # '1_4', '5_8', '9_11'
     
     await log_activity(
         user_id=callback.from_user.id,
@@ -38,10 +37,9 @@ async def start_rightwrong_game(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 async def ask_rightwrong_question(callback: CallbackQuery, state: FSMContext):
-    """Задаёт вопрос сценария (удаляя предыдущее сообщение)"""
     data = await state.get_data()
     
-    # Удаляем сообщение с кнопкой "Далее", если оно есть
+    # Удаляем предыдущее сообщение с кнопкой "Далее"
     try:
         await callback.message.delete()
     except:
@@ -129,10 +127,8 @@ async def next_rightwrong_question(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 async def finish_rightwrong_game(callback: CallbackQuery, state: FSMContext, result_text: str):
-    """Завершение игры 'Что правильно?' (удаляет сообщение с кнопкой Далее)"""
     data = await state.get_data()
     
-    # Удаляем сообщение с результатом выбора и кнопкой "Далее"
     try:
         await callback.message.delete()
     except:

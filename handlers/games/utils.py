@@ -6,7 +6,6 @@ from sqlalchemy import select
 
 async def save_game_result(user_id: int, game_type: str, age_group: str, 
                           score: int, max_score: int, steps: int):
-    """Сохраняет или обновляет результат игры в БД"""
     async with AsyncSessionLocal() as session:
         stmt = select(GameResult).where(
             (GameResult.user_id == user_id) &
@@ -17,13 +16,11 @@ async def save_game_result(user_id: int, game_type: str, age_group: str,
         existing = result.scalar_one_or_none()
         
         if existing:
-            # Обновляем если новый счет лучше
             if score > existing.score:
                 existing.score = score
                 existing.max_score = max_score
                 existing.steps_completed = steps
         else:
-            # Создаём новый результат
             new_result = GameResult(
                 user_id=user_id,
                 game_type=game_type,
@@ -37,7 +34,6 @@ async def save_game_result(user_id: int, game_type: str, age_group: str,
         await session.commit()
 
 def create_game_keyboard(age_group: str, game_type: str):
-    """Создаёт стандартную клавиатуру для игр"""
     builder = InlineKeyboardBuilder()
     
     builder.row(
@@ -62,7 +58,6 @@ def create_game_keyboard(age_group: str, game_type: str):
     return builder.as_markup()
 
 def get_performance_text(score: int, max_score: int) -> str:
-    """Возвращает текст оценки результатов"""
     percentage = (score / max_score) * 100
     
     if percentage >= 90:

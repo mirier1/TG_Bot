@@ -179,7 +179,7 @@ async def list_applications(message: Message):
     text += "Для одобрения: `/approve <ID>`\nДля отклонения: `/reject <ID> [причина]`"
     await message.answer(text, parse_mode="Markdown")
 
-# ---------- СТАТИСТИКА АКТИВНОСТИ (РУСИФИЦИРОВАННАЯ) ----------
+# ---------- СТАТИСТИКА АКТИВНОСТИ ----------
 @router.message(Command("stats_activity"), F.func(is_admin))
 async def stats_activity(message: Message):
     async with AsyncSessionLocal() as session:
@@ -237,27 +237,28 @@ async def stats_games_popular(message: Message):
             return
         
         game_names = {
-            # Новые записи (с подчёркиванием)
-            'waste_young': '♻️ Сортировка мусора (5-7 кл)',
-            'waste_teen': '♻️ Сортировка мусора (9-11 кл)',
-            'habits_young': '👍 Правильные привычки (5-7 кл)',
-            'habits_teen': '👍 Правильные привычки (9-11 кл)',
-            'rightwrong_young': '❓ Что правильно? (5-7 кл)',
-            'rightwrong_teen': '❓ Что правильно? (9-11 кл)',
+            'waste_1_4': '♻️ Сортировка мусора (1-4 кл)',
+            'waste_5_8': '♻️ Сортировка мусора (5-8 кл)',
+            'waste_9_11': '♻️ Сортировка мусора (9-11 кл)',
+            'habits_1_4': '👍 Правильные привычки (1-4 кл)',
+            'habits_5_8': '👍 Правильные привычки (5-8 кл)',
+            'habits_9_11': '👍 Правильные привычки (9-11 кл)',
+            'rightwrong_1_4': '❓ Что правильно? (1-4 кл)',
+            'rightwrong_5_8': '❓ Что правильно? (5-8 кл)',
+            'rightwrong_9_11': '❓ Что правильно? (9-11 кл)',
             'story': '📖 Сюжетная игра',
-            # Старые записи (без подчёркивания) для обратной совместимости
-            'wasteyoung': '♻️ Сортировка мусора (5-7 кл)',
-            'wasteteen': '♻️ Сортировка мусора (9-11 кл)',
-            'habitsyoung': '👍 Правильные привычки (5-7 кл)',
-            'habitsteen': '👍 Правильные привычки (9-11 кл)',
-            'rightwrongyoung': '❓ Что правильно? (5-7 кл)',
-            'rightwrongteen': '❓ Что правильно? (9-11 кл)',
+            # старые ключи для обратной совместимости
+            'wasteyoung': '♻️ Сортировка мусора (старая версия)',
+            'wasteteen': '♻️ Сортировка мусора (старая версия)',
+            'habitsyoung': '👍 Правильные привычки (старая версия)',
+            'habitsteen': '👍 Правильные привычки (старая версия)',
+            'rightwrongyoung': '❓ Что правильно? (старая версия)',
+            'rightwrongteen': '❓ Что правильно? (старая версия)',
         }
         
         text = "🎮 **Популярность игр:**\n\n"
         for details, count in rows:
             name = game_names.get(details, details)
-            # Склонение
             if count == 1:
                 ending = "запуск"
             elif 2 <= count <= 4:
