@@ -117,13 +117,7 @@ async def start_new_story_game(callback: CallbackQuery, state: FSMContext, age_g
 
 @router.callback_query(F.data == "game_story")
 async def start_story_game(callback: CallbackQuery, state: FSMContext):
-    # Проверка возраста: только 9-11 классы
-    user_age = await get_user_age_group(callback.from_user.id)
-    allowed = ("9-11", "9_11", "9-11 классы")
-    if user_age not in allowed:
-        await callback.answer("❌ Сюжетная игра доступна только для учеников 9-11 классов!", show_alert=True)
-        return
-    
+    # Логирование запуска игры (без проверки возраста)
     await log_activity(
         user_id=callback.from_user.id,
         action="game",
@@ -131,6 +125,7 @@ async def start_story_game(callback: CallbackQuery, state: FSMContext):
         details="story"
     )
 
+    # Проверяем наличие сохранения
     saved_data = await load_game_progress(callback.from_user.id)
     if saved_data:
         builder = InlineKeyboardBuilder()
@@ -149,6 +144,7 @@ async def start_story_game(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
 
+    # Определяем возраст (для сохранения в статистику)
     user_age = await get_user_age_group(callback.from_user.id) or "9-11"
     await start_new_story_game(callback, state, user_age)
 
