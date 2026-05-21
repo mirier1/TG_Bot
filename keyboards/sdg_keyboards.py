@@ -13,11 +13,11 @@ def get_sdg_list_kb():
     """Клавиатура со списком 17 ЦУР"""
     builder = InlineKeyboardBuilder()
     
-    for num, title in SDG_TITLES.items():
+    for num in range(1, 18):
         builder.add(InlineKeyboardButton(
             text=f"ЦУР {num}",
             callback_data=f"sdg_{num}"
-        ))
+    ))
     
     builder.adjust(3)
     builder.row(InlineKeyboardButton(
