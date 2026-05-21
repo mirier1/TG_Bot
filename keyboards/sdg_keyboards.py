@@ -13,7 +13,7 @@ def get_sdg_list_kb():
             callback_data=f"sdg_{num}"
         ))
     
-    builder.adjust(2)
+    builder.adjust(1)
     builder.row(InlineKeyboardButton(
         text="◀️ Назад в меню",
         callback_data="back_to_main_menu"
