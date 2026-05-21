@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from keyboards.main_menu_kb import get_main_kb
 from utils.constants import SDG_TITLES
-from keyboards.sdg_keyboards import get_sdg_list_kb, get_sdg_detail_kb, get_sdg_back_kb
+from keyboards.sdg_keyboards import get_sdg_list_kb, get_sdg_detail_kb, get_sdg_back_kb, get_sdg_list_text
 from services.analytics import log_activity
 
 router = Router()
