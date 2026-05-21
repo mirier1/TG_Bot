@@ -8,7 +8,7 @@ def get_sdg_list_kb():
     
     for num, title in SDG_TITLES.items():
         builder.add(InlineKeyboardButton(
-            text=f"{num}. {title}",
+            text=f"ЦУР {num}",
             callback_data=f"sdg_{num}"
         ))
     

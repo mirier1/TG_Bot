@@ -37,7 +37,7 @@ async def show_sdg_detail(callback: CallbackQuery):
     title = SDG_TITLES.get(sdg_num)
     
     await callback.message.edit_text(
-        f"🎯 **Цель {sdg_num}: {title}**\n\n"
+        f"{title}\n\n"
         f"Текст ЦУР для данной возростоной группы",
         reply_markup=get_sdg_detail_kb(sdg_num)
     )
