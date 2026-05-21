@@ -16,9 +16,16 @@ async def show_sdg_list(update: Message | CallbackQuery):
         await message.delete()
     else:
         message = update
-    
+
+    text = get_sdg_list_text()
     await message.answer(
-        "Выберите цель устойчивого развития:",
+        text,
+        parse_mode="Markdown"
+    )
+    
+    # Отправляем клавиатуру с кнопками-номерами
+    await message.answer(
+        "Выберите номер цели:",
         reply_markup=get_sdg_list_kb()
     )
 

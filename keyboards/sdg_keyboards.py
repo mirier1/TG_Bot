@@ -2,6 +2,13 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.constants import SDG_TITLES
 
+def get_sdg_list_text() -> str:
+    """Формирует текст со всеми ЦУР для отображения над кнопками"""
+    text = "🌍 **Цели устойчивого развития:**\n\n"
+    for num, title in SDG_TITLES.items():
+        text += f"**{num}.** {title}\n"
+    return text
+
 def get_sdg_list_kb():
     """Клавиатура со списком 17 ЦУР"""
     builder = InlineKeyboardBuilder()
