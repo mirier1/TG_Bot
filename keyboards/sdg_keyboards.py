@@ -7,9 +7,8 @@ def get_sdg_list_kb():
     builder = InlineKeyboardBuilder()
     
     for num, title in SDG_TITLES.items():
-        short_title = title[:30] + "..." if len(title) > 30 else title
         builder.add(InlineKeyboardButton(
-            text=f"{num}. {short_title}",
+            text=f"{short_title}",
             callback_data=f"sdg_{num}"
         ))
     
