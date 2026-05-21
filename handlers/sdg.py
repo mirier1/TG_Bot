@@ -19,8 +19,7 @@ async def show_sdg_list(update: Message | CallbackQuery):
 
     text = get_sdg_list_text()
     await message.answer(
-        text,
-        parse_mode="Markdown"
+        text
     )
     
     # Отправляем клавиатуру с кнопками-номерами
