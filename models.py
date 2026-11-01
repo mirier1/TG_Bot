@@ -110,3 +110,27 @@ class UserActivity(Base):
     target_id = Column(Integer, nullable=True)
     details = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class VideoContest(Base):
+    __tablename__ = "video_contest"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    username = Column(String, nullable=True)
+    video_file_id = Column(String)  # Сюда сохраним ID видео
+    description = Column(Text, nullable=True)
+    status = Column(String, default='pending')  # pending, approved, rejected
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class SDGContent(Base):
+    __tablename__ = "sdg_content"
+    
+    id = Column(Integer, primary_key=True)
+    sdg_id = Column(Integer) # От 1 до 17
+    age_group = Column(String) # '1-4', '5-8', '9-11' или 'all'
+    description = Column(Text)
+    video_url = Column(String, nullable=True)
+    
+    __table_args__ = (
+        UniqueConstraint('sdg_id', 'age_group', name='uq_sdg_age'),
+    )

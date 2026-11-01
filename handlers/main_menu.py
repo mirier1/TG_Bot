@@ -11,7 +11,7 @@ from handlers.ambassador import start_ambassador_form
 
 router = Router()
 
-@router.callback_query(F.data.startswith("menu_"))
+@router.callback_query(F.data.startswith("menu_"), ~F.data.startswith("menu_contest")) #добавлено исключение для кнопки видео конкурса
 async def handle_main_menu(callback: CallbackQuery, state: FSMContext):
     menu_action = callback.data.replace("menu_", "")
 
@@ -19,8 +19,6 @@ async def handle_main_menu(callback: CallbackQuery, state: FSMContext):
         await callback.message.delete()
     except:
         pass
-    
-    menu_action = callback.data.replace("menu_", "")
     
     if menu_action == "sdg":
         await show_sdg_list(callback.message)

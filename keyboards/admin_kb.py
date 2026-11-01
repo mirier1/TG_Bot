@@ -20,5 +20,9 @@ def get_admin_help_kb():
     builder.row(
         InlineKeyboardButton(text="❓ Неотвеченные вопросы", callback_data="admin_pending_questions")
     )
+
+    builder.row(
+        InlineKeyboardButton(text="📚 Управление контентом ЦУР", callback_data="admin_manage_sdg")
+    )
     
     return builder.as_markup()

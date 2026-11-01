@@ -5,6 +5,11 @@ from keyboards.main_menu_kb import get_main_kb
 from utils.constants import SDG_TITLES
 from keyboards.sdg_keyboards import get_sdg_list_kb, get_sdg_detail_kb, get_sdg_back_kb
 from services.analytics import log_activity
+from sqlalchemy import select # <--- ДОБАВЛЕНО
+
+# ДОБАВЛЕНО:
+from database import AsyncSessionLocal
+from models import User, SDGContent
 
 router = Router()
 
@@ -34,6 +39,19 @@ async def show_sdg_list(update: Message | CallbackQuery):
 async def show_sdg_detail(callback: CallbackQuery):
     sdg_num = int(callback.data.split("_")[1])
 
+    # Получаем возраст пользователя
+    async with AsyncSessionLocal() as session:
+        user = await session.scalar(select(User).where(User.id == callback.from_user.id))
+        age_group = user.age_group if user else "all"
+        
+        # Ищем контент для этого возраста (или для всех)
+        stmt = select(SDGContent).where(
+            (SDGContent.sdg_id == sdg_num) & 
+            (SDGContent.age_group.in_([age_group, "all"]))
+        ).order_by(SDGContent.age_group.desc()) # Сначала ищем конкретный возраст, потом "all"
+        
+        content = await session.scalar(stmt)
+
     await log_activity(
         user_id=callback.from_user.id,
         action="view_sdg",
@@ -43,10 +61,17 @@ async def show_sdg_detail(callback: CallbackQuery):
 
     title = SDG_TITLES.get(sdg_num)
 
+    if content:
+        # Если текст есть в базе
+        text = f"<b>{title}</b>\n\n{content.description}"
+    else:
+        # Если админ еще не загрузил текст
+        text = f"<b>{title}</b>\n\n📝 <i>Подробный текст для этой возрастной группы скоро появится!</i>"
+
     await callback.message.edit_text(
-        f"{title}\n\n"
-        f"Текст ЦУР для данной возрастной группы",
-        reply_markup=get_sdg_detail_kb(sdg_num)
+        text,
+        reply_markup=get_sdg_detail_kb(sdg_num),
+        parse_mode=ParseMode.HTML
     )
     await callback.answer()
 
@@ -75,12 +100,27 @@ async def back_to_main_menu_handler(callback: CallbackQuery):
 async def back_to_lecture(callback: CallbackQuery):
     """Возврат к лекции с полным меню"""
     sdg_num = int(callback.data.split("_")[3])
+    
+    # Тут тоже нужно подтянуть контент, чтобы не потерять текст при возврате
+    async with AsyncSessionLocal() as session:
+        user = await session.scalar(select(User).where(User.id == callback.from_user.id))
+        age_group = user.age_group if user else "all"
+        stmt = select(SDGContent).where(
+            (SDGContent.sdg_id == sdg_num) & 
+            (SDGContent.age_group.in_([age_group, "all"]))
+        ).order_by(SDGContent.age_group.desc())
+        content = await session.scalar(stmt)
 
     title = SDG_TITLES.get(sdg_num)
+    
+    if content:
+        text = f"<b>{title}</b>\n\n{content.description}"
+    else:
+        text = f"<b>{title}</b>\n\n📝 <i>Подробный текст для этой возрастной группы скоро появится!</i>"
 
     await callback.message.edit_text(
-        f"🎯 **Цель {sdg_num}: {title}**\n\n"
-        f"Текст для данной возрастной группы",
-        reply_markup=get_sdg_detail_kb(sdg_num)
+        text,
+        reply_markup=get_sdg_detail_kb(sdg_num),
+        parse_mode=ParseMode.HTML
     )
     await callback.answer()
