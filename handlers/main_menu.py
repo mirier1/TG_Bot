@@ -46,8 +46,6 @@ async def handle_main_menu(callback: CallbackQuery, state: FSMContext):
     elif menu_action == "ambassador":
         await start_ambassador_form(callback, state)
         return
-    elif menu_action == "contest":
-        await callback.message.answer("🎥 Конкурс 'Я есть ЦУР' в разработке")
     elif menu_action == "settings":
         await callback.message.answer(
             "⚙️ **Настройки профиля**\n\n"
